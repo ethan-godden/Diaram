@@ -40,6 +40,11 @@ public final class MemorySnapshot {
 		return new Builder(targetId);
 	}
 
+	/** The only door through a Reference. Empty = dangling. */
+	public Optional<DisplayableStruct> resolve(Value.Reference ref) {
+		return Optional.ofNullable(heapById.get(ref.target));
+	}
+
 	/** The debug session this snapshot came from; see {@link #builder(String)}. */
 	public String targetId() {
 		return targetId;
@@ -64,10 +69,6 @@ public final class MemorySnapshot {
 		return heap;
 	}
 
-	/** The only door through a Reference. Empty = dangling. */
-	public Optional<DisplayableStruct> resolve(Value.Reference ref) {
-		return Optional.ofNullable(heapById.get(ref.target));
-	}
 
 	/** What a variable holds: a display string, the debuggee's null, or a handle to a struct. */
 	public sealed interface Value {
