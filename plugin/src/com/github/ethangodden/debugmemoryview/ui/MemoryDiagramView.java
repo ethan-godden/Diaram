@@ -223,7 +223,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
     private void display(MemorySnapshot snapshot, MemoryDiff diff) {
         displayed = snapshot;
         controller.setRunning(false);
-        controller.setSnapshot(snapshot, diff); // setSnapshot defaults a null diff to initial
+        controller.setSnapshot(snapshot, diff); // setSnapshot defaults a null diff to all-NEW
         pageBook.showPage(canvas);
     }
 

@@ -14,7 +14,7 @@ import com.github.ethangodden.debugmemoryview.model.diff.ChangeStatus;
 
 /**
  * Theme-aware status colors. Dark mode is detected from the luminance of the
- * CSS-styled workbench control's background (not the OS theme). The three
+ * CSS-styled workbench control's background (not the OS theme). The two
  * change accents honor user overrides from the preference store: a key still
  * at its default uses the built-in theme-appropriate RGB, otherwise the user
  * RGB applies in both themes. All colors come from the shared ResourceManager
@@ -29,9 +29,8 @@ public final class ColorPalette {
 
     private Color newFg;
     private Color newTint;
-    private Color changedFg;
-    private Color changedTint;
-    private Color deletedFg;
+    private Color updatedFg;
+    private Color updatedTint;
     private Color mutedFg;
     private Color unchangedFg;
     private Color unchangedConnection;
@@ -57,14 +56,12 @@ public final class ColorPalette {
 
         newFg = color(prefOrBuiltIn(store, PreferenceConstants.PREF_COLOR_NEW,
                 rgb(25, 128, 56), rgb(110, 200, 130)));
-        changedFg = color(prefOrBuiltIn(store, PreferenceConstants.PREF_COLOR_CHANGED,
+        updatedFg = color(prefOrBuiltIn(store, PreferenceConstants.PREF_COLOR_UPDATED,
                 rgb(191, 102, 0), rgb(255, 178, 88)));
-        deletedFg = color(prefOrBuiltIn(store, PreferenceConstants.PREF_COLOR_DELETED,
-                rgb(190, 28, 28), rgb(255, 118, 118)));
 
         mutedFg = color(dark ? rgb(140, 140, 140) : rgb(128, 128, 128));
         newTint = color(dark ? rgb(26, 58, 36) : rgb(223, 244, 223));
-        changedTint = color(dark ? rgb(74, 52, 20) : rgb(255, 236, 209));
+        updatedTint = color(dark ? rgb(74, 52, 20) : rgb(255, 236, 209));
         unchangedFg = color(dark ? rgb(220, 220, 220) : rgb(30, 30, 30));
         unchangedConnection = color(dark ? rgb(150, 150, 150) : rgb(100, 100, 100));
         boxBg = color(dark ? rgb(45, 45, 45) : rgb(252, 252, 252));
@@ -88,8 +85,7 @@ public final class ColorPalette {
     public Color statusForeground(ChangeStatus status) {
         return switch (status) {
             case NEW -> newFg;
-            case CHANGED -> changedFg;
-            case DELETED -> deletedFg;
+            case UPDATED -> updatedFg;
             case UNCHANGED -> unchangedFg;
         };
     }
@@ -98,7 +94,7 @@ public final class ColorPalette {
     public @Nullable Color rowTint(ChangeStatus status) {
         return switch (status) {
             case NEW -> newTint;
-            case CHANGED -> changedTint;
+            case UPDATED -> updatedTint;
             default -> null;
         };
     }
@@ -114,11 +110,6 @@ public final class ColorPalette {
 
     public Color textForeground() {
         return unchangedFg;
-    }
-
-    /** The removed/deleted accent (red); ghost headers, dashed borders, DELETED rows. */
-    public Color deletedForeground() {
-        return deletedFg;
     }
 
     /** Muted gray for auxiliary text ("+N more…" expanders, info rows) — not a status accent. */

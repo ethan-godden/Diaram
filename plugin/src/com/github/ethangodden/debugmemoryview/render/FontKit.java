@@ -11,7 +11,6 @@ public final class FontKit {
     private final ResourceManager resources;
 
     private Font header;
-    private Font deleted;
 
     public FontKit(ResourceManager resources) {
         this.resources = resources;
@@ -28,14 +27,6 @@ public final class FontKit {
             header = resources.create(JFaceResources.getDefaultFontDescriptor().setStyle(SWT.BOLD));
         }
         return header;
-    }
-
-    /** Italic ghost font for DELETED items. */
-    public Font deleted() {
-        if (deleted == null) {
-            deleted = resources.create(JFaceResources.getDefaultFontDescriptor().setStyle(SWT.ITALIC));
-        }
-        return deleted;
     }
 
     /** Monospace font (tooltip value lines). */

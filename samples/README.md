@@ -39,9 +39,9 @@ Debug > Memory Diagram**. Resume/step to watch the diagram update.
 | `CollectionsDemo` | `ArrayList` / `HashMap` / `HashSet` internals |
 | `CyclicReferencesDemo` | Reference cycles and self-references |
 | `RecursionDemo` | Deep stack, one `n` local per frame |
-| `MutationOverTimeDemo` | NEW / CHANGED / DELETED diff highlighting (Resume repeatedly) |
+| `MutationOverTimeDemo` | NEW / UPDATED variable diff highlighting (Resume repeatedly) |
 | `PolymorphismDemo` | Runtime subtype labelling under a `List<Shape>` |
 | `RecordsDemo` | Nested immutable records |
 
-`MutationOverTimeDemo` is the one to run for the diff/ghost highlighting: set the
+`MutationOverTimeDemo` is the one to run for the variable diff highlighting: set the
 marked breakpoint and press **Resume (F8)** repeatedly.

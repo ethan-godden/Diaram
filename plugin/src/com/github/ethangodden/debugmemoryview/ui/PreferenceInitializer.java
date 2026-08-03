@@ -20,7 +20,6 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
         IPreferenceStore store = Activator.getDefault().getPreferenceStore();
         store.setDefault(PreferenceConstants.PREF_HIGHLIGHT_CHANGES, true);
         PreferenceConverter.setDefault(store, PreferenceConstants.PREF_COLOR_NEW, new RGB(25, 128, 56));
-        PreferenceConverter.setDefault(store, PreferenceConstants.PREF_COLOR_CHANGED, new RGB(191, 102, 0));
-        PreferenceConverter.setDefault(store, PreferenceConstants.PREF_COLOR_DELETED, new RGB(190, 28, 28));
+        PreferenceConverter.setDefault(store, PreferenceConstants.PREF_COLOR_UPDATED, new RGB(191, 102, 0));
     }
 }

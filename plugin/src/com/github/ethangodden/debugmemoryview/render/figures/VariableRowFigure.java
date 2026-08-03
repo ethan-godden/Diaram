@@ -59,7 +59,7 @@ public class VariableRowFigure extends Figure {
         if (name != null) {
             nameLabel = new Label(name + " :");
             nameLabel.setLabelAlignment(PositionConstants.LEFT);
-            nameLabel.setFont(status == ChangeStatus.DELETED ? fonts.deleted() : fonts.name());
+            nameLabel.setFont(fonts.name());
             nameLabel.setForegroundColor(palette.statusForeground(status));
             add(nameLabel);
         } else {

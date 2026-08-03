@@ -8,8 +8,9 @@ Eclipseview is an Eclipse plug-in that renders a live **memory diagram** of a
 suspended Java debug session: the stack (frames + locals), the heap (objects,
 arrays, strings, boxed values, enums), and static fields, drawn as boxes and
 reference arrows on a Draw2d canvas. Between suspends it diffs consecutive
-snapshots of the same thread and highlights changes (NEW / CHANGED / DELETED);
-deleted items render exactly once as translucent "ghosts".
+snapshots of the same thread and highlights each **variable** as NEW / UPDATED /
+UNCHANGED; variables are the only diffed thing (no frame/struct statuses, and
+removals are not tracked).
 
 - `plugin/` — the plug-in (JavaSE-21, singleton bundle `DebugMemoryView`,
   root package `com.github.ethangodden.debugmemoryview`). Built manifest-first by
@@ -93,10 +94,11 @@ Packages below sit under the root `com.github.ethangodden.debugmemoryview`.
   `Primitive | Reference` (or `null` = the absent/null value); a `Reference` is an opaque token,
   scoped to the snapshot's `targetId`, resolved only via `MemorySnapshot#resolve` to a
   `DisplayableStruct` or to nothing (a **dangling pointer**). `model.diff` computes `MemoryDiff` from
-  two snapshots; a row's cross-snapshot identity is `MemoryDiff.rowKeys()` (its label, disambiguated
-  by occurrence index — rows carry no separate symbol id). Ghosts carry full models copied from the
-  previous snapshot, with references left as-is (tokens are stable across snapshots of one target)
-  except when their target is gone, which rewrites them to the absent value.
+  two snapshots: one map of per-variable statuses keyed by the row's **address** — its container id
+  (frame id or struct id) plus its `MemoryDiff.rowKeys()` row key (label, disambiguated by occurrence
+  index — rows carry no separate symbol id). An address absent from the previous snapshot is NEW (so
+  a same-named local in a different frame is a different variable), a changed value is UPDATED,
+  everything else is UNCHANGED. Frames and structs carry no status; nothing is tracked for removals.
 - `core` — `DebugContextTracker` (debug-context + debug-event
   listeners), `SnapshotPipeline` (debounce, per-thread baselines, suspend
   generations, publish gating), `core.extract.SnapshotExtractor` (the JDI walk, the JDT→builder
@@ -117,12 +119,12 @@ Packages below sit under the root `com.github.ethangodden.debugmemoryview`.
   records + `Builder`) and `HeapLayouter`/`LayoutMemory` stay JDK-only so those test suites need
   no runtime.
 - Snapshots and diffs are immutable; renderers must treat a `MemoryDiff` as
-  transient per render and never accumulate ghosts.
+  transient per render.
 - Consumers are called only on the SWT UI thread (`Display.asyncExec`), gated
   by a sequence check so superseded snapshots are never displayed.
 - Reference values compare by **resolved target** (`DiffEngine.valueEquals`):
-  retargeting an arrow is the change; a target's mutation shows on the target
-  struct, not on every inbound arrow. Two dangling references are equal, and two unreadable values
+  retargeting an arrow is the change; a target's mutation shows on the target's
+  own rows, not on every inbound arrow. Two dangling references are equal, and two unreadable values
   (both mapped to `Primitive("?")`) are equal.
 
 ## Conventions

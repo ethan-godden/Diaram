@@ -37,6 +37,7 @@ import com.github.ethangodden.debugmemoryview.model.MemorySnapshot.DisplayableTh
 import com.github.ethangodden.debugmemoryview.model.MemorySnapshot.DisplayableVariable;
 import com.github.ethangodden.debugmemoryview.model.MemorySnapshot.Value;
 import com.github.ethangodden.debugmemoryview.model.diff.ChangeStatus;
+import com.github.ethangodden.debugmemoryview.model.diff.DiffEngine;
 import com.github.ethangodden.debugmemoryview.model.diff.MemoryDiff;
 import com.github.ethangodden.debugmemoryview.render.figures.ColumnFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.ContainerFigure;
@@ -99,7 +100,7 @@ public class DiagramController {
 
     private final Map<String, HeapObjectFigure> objectFigures = new HashMap<>();
     private final Map<VariableRowFigure, StateConnection> connectionsBySourceRow = new HashMap<>();
-    private final Map<String, DisplayableStruct> byId = new HashMap<>(); // snapshot heap + ghosts, for previews
+    private final Map<String, DisplayableStruct> byId = new HashMap<>(); // snapshot heap, for previews
 
     private MemorySnapshot snapshot;
     private MemoryDiff diff;
@@ -207,7 +208,8 @@ public class DiagramController {
     /** Full rebuild; caches (snapshot, diff) so refresh()/toggles can re-render. */
     public void setSnapshot(MemorySnapshot newSnapshot, @Nullable MemoryDiff newDiff) {
         snapshot = newSnapshot;
-        diff = newDiff != null ? newDiff : MemoryDiff.initial(newSnapshot);
+        // No diff supplied: every variable is at a fresh address, i.e. an initial (all-NEW) diff.
+        diff = newDiff != null ? newDiff : DiffEngine.diff(null, newSnapshot);
         rebuild();
     }
 
@@ -261,13 +263,6 @@ public class DiagramController {
         }
         for (DisplayableStruct struct : snapshot.heap()) {
             expansion.setObjectCollapsed(struct.id(), true);
-        }
-        // Ghost frames/structs render too (when highlighting) — collapse them as well.
-        for (DisplayableFrame ghost : diff.deletedFrames()) {
-            expansion.setFrameCollapsed(ghost.id(), true);
-        }
-        for (DisplayableStruct ghost : diff.deletedStructs()) {
-            expansion.setObjectCollapsed(ghost.id(), true);
         }
         rebuild();
     }
@@ -393,44 +388,28 @@ public class DiagramController {
 
     // ------------------------------------------------------------------ stack
 
-    private record FrameEntry(DisplayableFrame frame, boolean ghost) {
-    }
-
     private void buildStack(List<PendingRef> refs) {
-        List<FrameEntry> entries = new ArrayList<>();
         // The snapshot carries frames top-of-stack first; render bottom-of-stack
         // first so the stack grows DOWNWARD, as real memory does (the newest,
         // top-of-stack frame lands at the BOTTOM of the column).
         List<DisplayableFrame> live = framesOf(snapshot);
         for (int i = live.size() - 1; i >= 0; i--) {
-            entries.add(new FrameEntry(live.get(i), false));
-        }
-        if (palette.isHighlighting()) {
-            for (DisplayableFrame ghost : diff.deletedFrames()) {
-                entries.add(new FrameEntry(ghost, true));
-            }
-        }
-
-        for (FrameEntry entry : entries) {
-            DisplayableFrame frame = entry.frame();
+            DisplayableFrame frame = live.get(i);
             String frameToken = frame.id();
-            boolean ghost = entry.ghost();
-            ChangeStatus status = ghost ? ChangeStatus.DELETED
-                    : palette.effective(diff.frameStatusOf(frameToken));
             // Every frame builds its rows eagerly; only user-collapsed frames stay shut.
             boolean expanded = !expansion.isFrameCollapsed(frameToken);
-            ContainerFigure figure = new ContainerFigure(frame.label(), status, expanded, palette, fonts, () -> {
+            ContainerFigure figure = new ContainerFigure(frame.label(), expanded, palette, fonts, () -> {
                 expansion.setFrameCollapsed(frameToken, expanded);
                 rebuild();
             });
             if (expanded) {
-                populateFrame(figure, frame, ghost, refs);
+                populateFrame(figure, frame, refs);
             }
             stackContents.add(figure);
         }
     }
 
-    private void populateFrame(ContainerFigure figure, DisplayableFrame frame, boolean ghost, List<PendingRef> refs) {
+    private void populateFrame(ContainerFigure figure, DisplayableFrame frame, List<PendingRef> refs) {
         String frameToken = frame.id();
         if (frame.note() != null) {
             // Native/obsolete/unreadable frame: a note string stands in for variable rows.
@@ -438,61 +417,35 @@ public class DiagramController {
             return;
         }
         List<DisplayableVariable> variables = frame.variables(); // this first, then locals
-        // Same keying as the differ; ghost rows are uniformly DELETED, so their keys are never read.
-        List<String> rowKeys = ghost ? List.of() : MemoryDiff.rowKeys(variables);
+        List<String> rowKeys = MemoryDiff.rowKeys(variables); // same keying as the differ
         renderCapped("frame:" + frameToken, variables.size(), settings.maxLocalsPerFrameRendered, i -> {
             DisplayableVariable variable = variables.get(i);
-            ChangeStatus status = ghost ? ChangeStatus.DELETED
-                    : palette.effective(diff.variableStatusOf(frameToken, rowKeys.get(i)));
+            ChangeStatus status = palette.effective(diff.statusOf(frameToken, rowKeys.get(i)));
             return newRow(variable, status, refs, true);
         }, figure::addRow);
-        if (!ghost && palette.isHighlighting()) {
-            List<DisplayableVariable> ghostVariables = diff.deletedVariables().get(frameToken);
-            if (ghostVariables != null) {
-                for (DisplayableVariable variable : ghostVariables) {
-                    figure.addRow(newRow(variable, ChangeStatus.DELETED, refs, true));
-                }
-            }
-        }
     }
 
     // ------------------------------------------------------------------- heap
 
     private void buildHeap(List<PendingRef> refs) {
-        List<DisplayableStruct> ghosts = new ArrayList<>();
-        if (palette.isHighlighting()) {
-            for (DisplayableStruct ghost : diff.deletedStructs()) {
-                if (isVisibleStruct(ghost.id())) {
-                    ghosts.add(ghost);
-                }
-            }
-        }
         for (DisplayableStruct struct : snapshot.heap()) {
             byId.put(struct.id(), struct);
         }
-        for (DisplayableStruct ghost : ghosts) {
-            byId.put(ghost.id(), ghost);
-        }
 
-        List<String> order = HeapLayouter.assign(snapshot, ghosts, layoutMemory);
-
-        Set<String> ghostTokens = new HashSet<>();
-        for (DisplayableStruct ghost : ghosts) {
-            ghostTokens.add(ghost.id());
-        }
+        List<String> order = HeapLayouter.assign(snapshot, layoutMemory);
 
         // Heap cap chosen in discovery order: roots-first survival. Only the
-        // live, visible (statics filtered) structs count toward the cap.
-        List<String> visibleLive = new ArrayList<>();
+        // visible (statics filtered) structs count toward the cap.
+        List<String> visible = new ArrayList<>();
         for (DisplayableStruct struct : snapshot.heap()) {
             if (isVisibleStruct(struct.id())) {
-                visibleLive.add(struct.id());
+                visible.add(struct.id());
             }
         }
         int heapCap = expansion.capOf(CAP_KEY_HEAP, settings.maxHeapObjectsRendered);
-        int shown = Math.min(visibleLive.size(), heapCap);
-        Set<String> rendered = new HashSet<>(visibleLive.subList(0, shown));
-        int omitted = visibleLive.size() - shown;
+        int shown = Math.min(visible.size(), heapCap);
+        Set<String> rendered = new HashSet<>(visible.subList(0, shown));
+        int omitted = visible.size() - shown;
 
         // One vertical column of boxes; ~16 px between OBJECTS (rows inside a box
         // stack with zero spacing — they read as contiguous memory cells).
@@ -503,18 +456,14 @@ public class DiagramController {
         heapBody.setLayoutManager(bodyLayout);
 
         for (String token : order) {
-            boolean ghost = ghostTokens.contains(token);
-            if (!isVisibleStruct(token)) {
-                continue; // statics hidden by the toggle
-            }
-            if (!ghost && !rendered.contains(token)) {
-                continue;
+            if (!rendered.contains(token)) {
+                continue; // statics hidden by the toggle, or elided by the heap cap
             }
             DisplayableStruct struct = byId.get(token);
             if (struct == null) {
                 continue;
             }
-            heapBody.add(buildObjectFigure(struct, ghost, refs));
+            heapBody.add(buildObjectFigure(struct, refs));
         }
         if (omitted > 0) {
             heapBody.add(unrenderedBox(omitted));
@@ -527,17 +476,16 @@ public class DiagramController {
         return settings.showStatics || !token.startsWith(STATICS_TOKEN_PREFIX);
     }
 
-    private HeapObjectFigure buildObjectFigure(DisplayableStruct struct, boolean ghost, List<PendingRef> refs) {
+    private HeapObjectFigure buildObjectFigure(DisplayableStruct struct, List<PendingRef> refs) {
         String token = struct.id();
-        ChangeStatus status = ghost ? ChangeStatus.DELETED : palette.effective(diff.structStatusOf(token));
         boolean collapsed = expansion.isObjectCollapsed(token);
-        HeapObjectFigure figure = new HeapObjectFigure(struct.type(), status, collapsed, palette, fonts,
+        HeapObjectFigure figure = new HeapObjectFigure(struct.type(), collapsed, palette, fonts,
                 () -> {
                     expansion.setObjectCollapsed(token, !collapsed);
                     rebuild();
                 });
         if (!collapsed) {
-            populateObject(figure, struct, ghost, refs);
+            populateObject(figure, struct, refs);
         }
         objectFigures.put(token, figure); // aliasing: same token -> same figure instance
         return figure;
@@ -551,19 +499,17 @@ public class DiagramController {
      * arrays, boxed values and enums all arrive as ordinary fields, so no
      * per-kind special-casing is needed.
      */
-    private void populateObject(HeapObjectFigure figure, DisplayableStruct struct, boolean ghost, List<PendingRef> refs) {
+    private void populateObject(HeapObjectFigure figure, DisplayableStruct struct, List<PendingRef> refs) {
         if (!struct.explored()) {
             figure.addRow(infoRow("(not explored)"));
             return;
         }
         String token = struct.id();
         List<DisplayableVariable> fields = struct.variables();
-        // Same keying as the differ; ghost rows are uniformly DELETED, so their keys are never read.
-        List<String> rowKeys = ghost ? List.of() : MemoryDiff.rowKeys(fields);
+        List<String> rowKeys = MemoryDiff.rowKeys(fields); // same keying as the differ
         renderCapped("obj:" + token, fields.size(), fieldCapFor(token), i -> {
             DisplayableVariable field = fields.get(i);
-            ChangeStatus status = ghost ? ChangeStatus.DELETED
-                    : palette.effective(diff.fieldStatusOf(token, rowKeys.get(i)));
+            ChangeStatus status = palette.effective(diff.statusOf(token, rowKeys.get(i)));
             return newRow(field, status, refs, false);
         }, figure::addRow);
         if (struct.omitted() > 0) {

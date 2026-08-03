@@ -153,8 +153,8 @@ public class MemorySnapshotBuilderTest {
 
     @Test
     void testReferenceResolvesAcrossSnapshotsOfSameTarget() {
-        // Ghost arrows depend on this: a reference minted for snapshot 1 must resolve against
-        // snapshot 2 of the SAME target when the struct still exists there.
+        // Cross-snapshot value comparison depends on this: a reference minted for snapshot 1
+        // must resolve against snapshot 2 of the SAME target when the struct still exists there.
         Value.Reference ref = MemorySnapshot.builder("target").reference("X");
         MemorySnapshot next = MemorySnapshot.builder("target").fill(struct("X", "X #1", List.of())).build();
         assertEquals("X", next.resolve(ref).orElseThrow().id(),

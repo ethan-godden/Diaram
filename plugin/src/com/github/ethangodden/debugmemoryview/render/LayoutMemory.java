@@ -30,7 +30,7 @@ public final class LayoutMemory {
         return orderKeys.get(token);
     }
 
-    /** Evicts orderKeys of tokens absent from the latest snapshot and its ghosts. */
+    /** Evicts orderKeys of tokens absent from the latest snapshot. */
     public void retainAll(Set<String> liveTokens) {
         orderKeys.keySet().retainAll(liveTokens);
     }

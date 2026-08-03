@@ -15,18 +15,14 @@ final class BoxFigures {
     private BoxFigures() {
     }
 
-    /**
-     * The "▾/▸ title" header label with the collapsible-box chrome: opaque header band, LEFT
-     * alignment, and a ghost-aware font/foreground (deleted styling when {@code ghost}).
-     */
-    static Label collapsibleHeader(String title, boolean expanded, boolean ghost,
-            ColorPalette palette, FontKit fonts) {
+    /** The "▾/▸ title" header label with the collapsible-box chrome: opaque header band, LEFT alignment. */
+    static Label collapsibleHeader(String title, boolean expanded, ColorPalette palette, FontKit fonts) {
         Label header = new Label((expanded ? "▾ " : "▸ ") + title);
         header.setLabelAlignment(PositionConstants.LEFT);
-        header.setFont(ghost ? fonts.deleted() : fonts.header());
+        header.setFont(fonts.header());
         header.setOpaque(true);
         header.setBackgroundColor(palette.headerBackground());
-        header.setForegroundColor(ghost ? palette.deletedForeground() : palette.textForeground());
+        header.setForegroundColor(palette.textForeground());
         header.setBorder(new MarginBorder(3, 6, 3, 6));
         return header;
     }

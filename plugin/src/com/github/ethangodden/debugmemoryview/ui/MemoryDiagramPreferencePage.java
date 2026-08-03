@@ -30,9 +30,7 @@ public class MemoryDiagramPreferencePage extends FieldEditorPreferencePage
                 "Highlight changes between suspends", getFieldEditorParent()));
         addField(new ColorFieldEditor(PreferenceConstants.PREF_COLOR_NEW,
                 "New:", getFieldEditorParent()));
-        addField(new ColorFieldEditor(PreferenceConstants.PREF_COLOR_CHANGED,
-                "Changed:", getFieldEditorParent()));
-        addField(new ColorFieldEditor(PreferenceConstants.PREF_COLOR_DELETED,
-                "Deleted:", getFieldEditorParent()));
+        addField(new ColorFieldEditor(PreferenceConstants.PREF_COLOR_UPDATED,
+                "Updated:", getFieldEditorParent()));
     }
 }

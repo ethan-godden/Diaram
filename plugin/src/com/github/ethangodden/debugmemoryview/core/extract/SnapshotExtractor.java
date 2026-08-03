@@ -117,7 +117,7 @@ public final class SnapshotExtractor {
         }
 
         // targetId is baked into every minted reference token, so consecutive snapshots of the
-        // same target resolve each other's references (ghost arrows) while other targets' miss.
+        // same target resolve each other's references while other targets' miss.
         this.builder = MemorySnapshot.builder(debugTargetToken);
 
         IStackFrame[] raw = javaThread.getStackFrames(); // one wire call, top frame first

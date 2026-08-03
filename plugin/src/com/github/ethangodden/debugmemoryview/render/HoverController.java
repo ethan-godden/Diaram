@@ -11,7 +11,7 @@ import com.github.ethangodden.debugmemoryview.render.figures.VariableRowFigure;
 
 /**
  * Single-slot hover state machine for variable rows: every row (primitive,
- * null, unreadable, ghost) gets the blue row tint; reference rows additionally
+ * null, unreadable) gets the blue row tint; reference rows additionally
  * get connection thicken/recolor + target box outline + lazy preview tooltip,
  * and click reveals the target in the heap pane. Draw2d guarantees
  * mouseExited(old) before mouseEntered(new), so one slot suffices. reset() is

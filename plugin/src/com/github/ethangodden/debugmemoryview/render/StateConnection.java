@@ -6,7 +6,6 @@ import org.eclipse.draw2d.PolylineConnection;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.PointList;
 import org.eclipse.draw2d.geometry.Rectangle;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Path;
 import org.eclipse.swt.widgets.Display;
@@ -43,9 +42,6 @@ public class StateConnection extends PolylineConnection {
         baseColor = palette.connectionColor(sourceStatus);
         setForegroundColor(baseColor);
         setLineWidth(1);
-        if (sourceStatus == ChangeStatus.DELETED) {
-            setLineStyle(SWT.LINE_DASH);
-        }
         PolygonDecoration arrowhead = new PolygonDecoration(); // filled TRIANGLE_TIP, inherits color
         arrowhead.setScale(9, 4);
         setTargetDecoration(arrowhead);

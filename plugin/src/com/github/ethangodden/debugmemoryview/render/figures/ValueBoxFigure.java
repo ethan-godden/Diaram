@@ -29,7 +29,7 @@ public class ValueBoxFigure extends Label {
     public ValueBoxFigure(@Nullable String text, ChangeStatus status, ColorPalette palette, FontKit fonts) {
         super(text == null ? "" : text);
         setLabelAlignment(PositionConstants.CENTER);
-        setFont(status == ChangeStatus.DELETED ? fonts.deleted() : fonts.name());
+        setFont(fonts.name());
         setForegroundColor(palette.statusForeground(status));
         setBorder(new CompoundBorder(new LineBorder(palette.boxBorder(), 1), new MarginBorder(1, 4, 1, 4)));
     }

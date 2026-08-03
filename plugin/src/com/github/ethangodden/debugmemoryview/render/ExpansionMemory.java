@@ -42,7 +42,7 @@ public final class ExpansionMemory {
         toggle(collapsedStaticClasses, className, collapsed);
     }
 
-    /** Back to the expanded-everywhere default (also un-collapses ghosts). */
+    /** Back to the expanded-everywhere default. */
     public void expandAll() {
         collapsedFrames.clear();
         collapsedObjects.clear();

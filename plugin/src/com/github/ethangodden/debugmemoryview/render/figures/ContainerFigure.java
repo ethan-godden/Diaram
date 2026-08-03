@@ -2,16 +2,13 @@ package com.github.ethangodden.debugmemoryview.render.figures;
 
 import org.eclipse.draw2d.Border;
 import org.eclipse.draw2d.Figure;
-import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.LineBorder;
 import org.eclipse.draw2d.ToolbarLayout;
 import org.eclipse.jdt.annotation.Nullable;
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 
-import com.github.ethangodden.debugmemoryview.model.diff.ChangeStatus;
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
 import com.github.ethangodden.debugmemoryview.render.FontKit;
 
@@ -19,35 +16,31 @@ import com.github.ethangodden.debugmemoryview.render.FontKit;
  * A variable container: an opaque, bordered box with a collapsible "▾/▸ title"
  * header and a body of variable rows. Stack frames are exactly this; heap
  * objects and arrays extend it ({@link HeapObjectFigure}) with hover /
- * width-clamp behaviour.
+ * width-clamp behaviour. Containers carry no change status — only variable
+ * rows do.
  *
- * The status border sits FLUSH against the rows — no inner margin — so a row's
+ * The border sits FLUSH against the rows — no inner margin — so a row's
  * value box touches the container border, matching a stack frame. Single left-
- * click on the ▾/▸ header toggles the box collapsed to header-only. DELETED
- * containers render as ghosts (dashed border, whole figure at alpha 110).
+ * click on the ▾/▸ header toggles the box collapsed to header-only.
  */
 public class ContainerFigure extends Figure {
 
     protected final ColorPalette palette;
-    protected final ChangeStatus status;
     protected final Label header;
     protected final Figure body;
-    private final boolean ghost;
 
-    public ContainerFigure(String title, ChangeStatus status, boolean expanded,
+    public ContainerFigure(String title, boolean expanded,
             ColorPalette palette, FontKit fonts, @Nullable Runnable onToggle) {
         this.palette = palette;
-        this.status = status;
-        ghost = status == ChangeStatus.DELETED;
 
         ToolbarLayout layout = new ToolbarLayout(false);
         layout.setStretchMinorAxis(true);
         setLayoutManager(layout);
         setOpaque(true);
         setBackgroundColor(palette.boxBackground());
-        setBorder(borderFor(status, palette, false));
+        setBorder(borderFor(palette, false));
 
-        header = BoxFigures.collapsibleHeader(title, expanded, ghost, palette, fonts);
+        header = BoxFigures.collapsibleHeader(title, expanded, palette, fonts);
         add(header);
 
         body = new Figure();
@@ -66,29 +59,12 @@ public class ContainerFigure extends Figure {
     }
 
     /**
-     * The status border, flush against the rows: 1 px, thickened to 2 px for
-     * NEW/CHANGED emphasis and dashed for DELETED. {@code hover} recolors it to
+     * The 1 px box border, flush against the rows. {@code hover} recolors it to
      * the accent while keeping the SAME width and style, so a hover or reveal
      * never shifts the box geometry (no inner margin needed to reserve the swap).
      */
-    static Border borderFor(ChangeStatus status, ColorPalette palette, boolean hover) {
-        Color color = hover ? palette.hoverAccent() : switch (status) {
-            case NEW, CHANGED -> palette.statusForeground(status);
-            case DELETED -> palette.deletedForeground();
-            case UNCHANGED -> palette.boxBorder();
-        };
-        return switch (status) {
-            case NEW, CHANGED -> new LineBorder(color, 2);
-            case DELETED -> new LineBorder(color, 1, SWT.LINE_DASH);
-            case UNCHANGED -> new LineBorder(color, 1);
-        };
-    }
-
-    @Override
-    public void paint(Graphics graphics) {
-        if (ghost) {
-            graphics.setAlpha(110); // inherits to header and rows
-        }
-        super.paint(graphics);
+    static Border borderFor(ColorPalette palette, boolean hover) {
+        Color color = hover ? palette.hoverAccent() : palette.boxBorder();
+        return new LineBorder(color, 1);
     }
 }

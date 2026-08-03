@@ -21,8 +21,7 @@ import com.github.ethangodden.debugmemoryview.render.LayoutMemory;
  * <p>The layouter trusts {@link MemorySnapshot#heap()}'s struct order and stabilizes it with a
  * {@link LayoutMemory} keyed on each struct's {@code id}: a struct remembered from an earlier
  * rebuild keeps its slot (sticky orderKey) even when the snapshot reorders the heap; a never-seen
- * struct appends after all remembered ones; ghost structs (present only in the ghosts list) keep or
- * get a slot; ids absent from the latest snapshot+ghosts are evicted.
+ * struct appends after all remembered ones; ids absent from the latest snapshot are evicted.
  */
 public class HeapLayouterTest {
 
@@ -38,11 +37,6 @@ public class HeapLayouterTest {
         b.fill(new DisplayableStruct(id, id, List.of(), true, 0, null));
     }
 
-    /** A standalone ghost struct (lives only in the ghosts list, never in the heap). */
-    private static DisplayableStruct ghost(String id) {
-        return new DisplayableStruct(id, id, List.of(), true, 0, null);
-    }
-
     // ---------- heap order ----------
 
     @Test
@@ -52,7 +46,7 @@ public class HeapLayouterTest {
         box(b, "A");
         box(b, "B");
         box(b, "C");
-        List<String> order = HeapLayouter.assign(b.build(), List.of(), new LayoutMemory());
+        List<String> order = HeapLayouter.assign(b.build(), new LayoutMemory());
         assertEquals(List.of("A", "B", "C"), order,
                 "order: heap column follows the snapshot's struct order");
     }
@@ -63,13 +57,13 @@ public class HeapLayouterTest {
         box(b1, "A");
         box(b1, "B");
         box(b1, "C");
-        List<String> order1 = HeapLayouter.assign(b1.build(), List.of(), new LayoutMemory());
+        List<String> order1 = HeapLayouter.assign(b1.build(), new LayoutMemory());
 
         MemorySnapshot.Builder b2 = builder();
         box(b2, "A");
         box(b2, "B");
         box(b2, "C");
-        List<String> order2 = HeapLayouter.assign(b2.build(), List.of(), new LayoutMemory());
+        List<String> order2 = HeapLayouter.assign(b2.build(), new LayoutMemory());
 
         assertEquals(order1, order2, "order: deterministic across runs with fresh memory");
     }
@@ -84,7 +78,7 @@ public class HeapLayouterTest {
         MemorySnapshot.Builder b1 = builder();
         box(b1, "A");
         box(b1, "B");
-        List<String> order1 = HeapLayouter.assign(b1.build(), List.of(), memory);
+        List<String> order1 = HeapLayouter.assign(b1.build(), memory);
         assertEquals(List.of("A", "B"), order1, "stability: initial column order");
         Long keyA = memory.orderKeyOf("A");
         Long keyB = memory.orderKeyOf("B");
@@ -94,7 +88,7 @@ public class HeapLayouterTest {
         MemorySnapshot.Builder b2 = builder();
         box(b2, "B");
         box(b2, "A");
-        List<String> order2 = HeapLayouter.assign(b2.build(), List.of(), memory);
+        List<String> order2 = HeapLayouter.assign(b2.build(), memory);
         assertEquals(List.of("A", "B"), order2,
                 "stability: remembered ids keep their slots despite snapshot reordering");
         assertEquals(keyA, memory.orderKeyOf("A"), "stability: A orderKey retained verbatim");
@@ -108,51 +102,18 @@ public class HeapLayouterTest {
         MemorySnapshot.Builder b1 = builder();
         box(b1, "A");
         box(b1, "B");
-        HeapLayouter.assign(b1.build(), List.of(), memory);
+        HeapLayouter.assign(b1.build(), memory);
 
         // step 2: a NEW struct C appears (snapshot lists it first) — it must append after A and B.
         MemorySnapshot.Builder b2 = builder();
         box(b2, "C");
         box(b2, "A");
         box(b2, "B");
-        List<String> order = HeapLayouter.assign(b2.build(), List.of(), memory);
+        List<String> order = HeapLayouter.assign(b2.build(), memory);
         assertEquals(List.of("A", "B", "C"), order,
                 "append: a new struct sorts after every remembered struct");
         assertTrue(memory.orderKeyOf("C").longValue() > memory.orderKeyOf("B").longValue(),
                 "append: new struct gets an orderKey after all existing ones");
-    }
-
-    // ---------- ghosts ----------
-
-    @Test
-    void testGhostKeepsRememberedSlot() {
-        LayoutMemory memory = new LayoutMemory();
-
-        MemorySnapshot.Builder b1 = builder();
-        box(b1, "A");
-        box(b1, "B");
-        HeapLayouter.assign(b1.build(), List.of(), memory); // remembers A then B
-        Long keyB = memory.orderKeyOf("B");
-
-        // step 2: B is gone from the heap but rendered as a ghost — it keeps its remembered slot.
-        MemorySnapshot.Builder b2 = builder();
-        box(b2, "A");
-        List<String> order = HeapLayouter.assign(b2.build(), List.of(ghost("B")), memory);
-        assertEquals(List.of("A", "B"), order, "ghost: keeps its remembered slot");
-        assertEquals(keyB, memory.orderKeyOf("B"), "ghost: orderKey retained in memory");
-    }
-
-    @Test
-    void testNeverSeenGhostAppends() {
-        LayoutMemory memory = new LayoutMemory();
-
-        MemorySnapshot.Builder b = builder();
-        box(b, "A");
-        // A ghost never seen before appends after the live structs.
-        List<String> order = HeapLayouter.assign(b.build(), List.of(ghost("G")), memory);
-        assertEquals(List.of("A", "G"), order, "ghost: a never-seen ghost appends after live structs");
-        assertTrue(memory.orderKeyOf("G").longValue() > memory.orderKeyOf("A").longValue(),
-                "ghost: never-seen ghost gets an orderKey after the live structs");
     }
 
     // ---------- eviction ----------
@@ -164,13 +125,13 @@ public class HeapLayouterTest {
         MemorySnapshot.Builder b1 = builder();
         box(b1, "A");
         box(b1, "B");
-        HeapLayouter.assign(b1.build(), List.of(), memory);
+        HeapLayouter.assign(b1.build(), memory);
         assertNotNull(memory.orderKeyOf("B"), "eviction: orderKey exists while live");
 
-        // step 2: B is absent from both the snapshot and the ghosts => evicted and off the column.
+        // step 2: B is absent from the snapshot => evicted and off the column.
         MemorySnapshot.Builder b2 = builder();
         box(b2, "A");
-        List<String> order = HeapLayouter.assign(b2.build(), List.of(), memory);
+        List<String> order = HeapLayouter.assign(b2.build(), memory);
         assertEquals(List.of("A"), order, "eviction: evicted id absent from the column");
         assertNull(memory.orderKeyOf("B"), "eviction: orderKey removed from memory");
 
@@ -178,7 +139,7 @@ public class HeapLayouterTest {
         MemorySnapshot.Builder b3 = builder();
         box(b3, "B");
         box(b3, "A");
-        List<String> order3 = HeapLayouter.assign(b3.build(), List.of(), memory);
+        List<String> order3 = HeapLayouter.assign(b3.build(), memory);
         assertEquals(List.of("A", "B"), order3, "eviction: reappearing id re-assigned after existing");
         assertTrue(memory.orderKeyOf("B").longValue() > memory.orderKeyOf("A").longValue(),
                 "eviction: reappearing id gets a fresh orderKey");
