@@ -13,8 +13,8 @@ public final class Ellipsis {
     }
 
     /**
-     * Display text of a value, char-capped. A {@link Value.Primitive} renders its string; a
-     * reference renders "→" (the arrow carries the target) and {@link Value.NullValue} renders "null".
+     * Display text of a value, char-capped. A {@link Value.BoxValue} renders its string ("null"
+     * for the debuggee's null); a reference renders "→" (the arrow carries the target).
      */
     public static String valueText(Value value, int maxChars) {
         // abbreviate's width includes the marker, so maxChars + 1 keeps "maxChars chars + …".
@@ -24,8 +24,7 @@ public final class Ellipsis {
     /** Untruncated display text of a value (tooltips / previews). */
     public static String fullValueText(Value value) {
         return switch (value) {
-            case Value.Primitive primitive -> primitive.value();
-            case Value.NullValue() -> "null";
+            case Value.BoxValue primitive -> primitive.value();
             case Value.Reference reference -> "→"; // the arrow carries the target
         };
     }

@@ -44,7 +44,7 @@ public class MemorySnapshotBuilderTest {
     void testFrameKeepsVariableOrderThisFirst() {
         MemorySnapshot d = builder().thread(thread(
                 frame("f0", "Demo.main() line 3",
-                        List.of(var("this", new Value.Primitive("Demo")), var("x", new Value.Primitive("1"))))))
+                        List.of(var("this", new Value.BoxValue("Demo")), var("x", new Value.BoxValue("1"))))))
                 .build();
         DisplayableFrame f = d.threads().get(0).frames().get(0);
         assertEquals(2, f.variables().size(), "frame keeps both variable rows");
@@ -74,7 +74,7 @@ public class MemorySnapshotBuilderTest {
     @Test
     void testFillKeepsVariablesAndAppearsInHeap() {
         MemorySnapshot d = builder()
-                .fill(struct("p1", "P #1", List.of(var("a", new Value.Primitive("7")))))
+                .fill(struct("p1", "P #1", List.of(var("a", new Value.BoxValue("7")))))
                 .build();
         DisplayableStruct s = d.heap().get(0);
         assertEquals("p1", s.id(), "the filled struct is in the heap");
@@ -107,7 +107,7 @@ public class MemorySnapshotBuilderTest {
     void testOmittedAndExploredCarry() {
         MemorySnapshot d = builder()
                 .fill(new DisplayableStruct("arr", "int[5] #2",
-                        List.of(var("0", new Value.Primitive("9"))), true, 4, null))
+                        List.of(var("0", new Value.BoxValue("9"))), true, 4, null))
                 .build();
         assertEquals(4, d.heap().get(0).omitted(), "omitted (capped elements) is carried on the struct");
     }
@@ -172,11 +172,11 @@ public class MemorySnapshotBuilderTest {
 
     // ---------- values ----------
     @Test
-    void testAbsentValueIsNullValue() {
+    void testNullValueIsNullText() {
         MemorySnapshot d = builder()
-                .thread(thread(frame("f0", "Demo.main()", List.of(var("n", Value.NullValue.INSTANCE)))))
+                .thread(thread(frame("f0", "Demo.main()", List.of(var("n", new Value.BoxValue("null"))))))
                 .build();
         DisplayableVariable v = d.threads().get(0).frames().get(0).variables().get(0);
-        assertEquals(Value.NullValue.INSTANCE, v.value(), "an absent/uninitialized value is a NullValue");
+        assertEquals(new Value.BoxValue("null"), v.value(), "the debuggee's null is the box value \"null\"");
     }
 }

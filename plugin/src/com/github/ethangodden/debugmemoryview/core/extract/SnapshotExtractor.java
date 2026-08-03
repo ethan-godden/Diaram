@@ -199,7 +199,7 @@ public final class SnapshotExtractor {
         } catch (DebugException e) {
             abortIfUnusable();
             if (!staticMethod && !nativeFrame) {
-                thisVariable = new DisplayableVariable("this", typeName, new Value.Primitive("?")); //$NON-NLS-1$ //$NON-NLS-2$
+                thisVariable = new DisplayableVariable("this", typeName, new Value.BoxValue("?")); //$NON-NLS-1$ //$NON-NLS-2$
             }
         }
         if (thisVariable != null) {
@@ -238,10 +238,11 @@ public final class SnapshotExtractor {
     private Value convert(IJavaValue value, int depth) {
         try {
             if (value == null || value.isNull()) {
-                return Value.NullValue.INSTANCE; // the debuggee's null
+                // The debuggee's null: shown as text, the row keeps the declared type.
+                return new Value.BoxValue("null"); //$NON-NLS-1$
             }
             if (value instanceof IJavaPrimitiveValue) {
-                return new Value.Primitive(value.getValueString());
+                return new Value.BoxValue(value.getValueString());
             }
             if (value instanceof IJavaArray array) {
                 return reference(array, depth);
@@ -250,18 +251,18 @@ public final class SnapshotExtractor {
                 String signature = object.getSignature();
                 if (STRING_SIGNATURE.equals(signature) && limits.inlineStrings()) {
                     // Escape hatch: no heap box, quoted text inline.
-                    return new Value.Primitive(quotedString(object));
+                    return new Value.BoxValue(quotedString(object));
                 }
                 String wrapper = BOXED_BY_SIGNATURE.get(signature);
                 if (wrapper != null && limits.inlineBoxed()) {
-                    return new Value.Primitive(boxedText(object));
+                    return new Value.BoxValue(boxedText(object));
                 }
                 return reference(object, depth);
             }
-            return new Value.Primitive(value.getValueString()); // JDI void and friends
+            return new Value.BoxValue(value.getValueString()); // JDI void and friends
         } catch (DebugException e) {
             abortIfUnusable();
-            return new Value.Primitive("?"); //$NON-NLS-1$
+            return new Value.BoxValue("?"); //$NON-NLS-1$
         }
     }
 
@@ -270,7 +271,7 @@ public final class SnapshotExtractor {
         if (id == -1) {
             // Collected between value fetch and id fetch: no box.
             abortIfUnusable();
-            return new Value.Primitive("?"); //$NON-NLS-1$
+            return new Value.BoxValue("?"); //$NON-NLS-1$
         }
         if (reservedBoxes.add(id)) {
             // STUB first: every reference has a target struct, aliasing stays correct past the
@@ -343,7 +344,7 @@ public final class SnapshotExtractor {
                     element = convert(array.getValue(i), pending.depth() + 1);
                 } catch (DebugException e) {
                     abortIfUnusable();
-                    element = new Value.Primitive("?"); //$NON-NLS-1$
+                    element = new Value.BoxValue("?"); //$NON-NLS-1$
                 }
                 fields.add(arrayElement(i, componentType, element));
             }
@@ -371,7 +372,7 @@ public final class SnapshotExtractor {
         for (int i = 0; i < text.length(); i++) {
             // One field per char: label is the index, value is the character text.
             fields.add(new DisplayableVariable(Integer.toString(i), "char", //$NON-NLS-1$
-                    new Value.Primitive(String.valueOf(text.charAt(i)))));
+                    new Value.BoxValue(String.valueOf(text.charAt(i)))));
         }
         fill(boxToken(id), header, fields, capped.truncated() ? 1 : 0);
     }
@@ -400,7 +401,7 @@ public final class SnapshotExtractor {
         }
         String header = simpleName(wrapperTypeName) + " #" + id; //$NON-NLS-1$
         // A boxed primitive is a single field carrying the (possibly cache-annotated) display value.
-        DisplayableVariable field = new DisplayableVariable("value", wrapperTypeName, new Value.Primitive(text)); //$NON-NLS-1$
+        DisplayableVariable field = new DisplayableVariable("value", wrapperTypeName, new Value.BoxValue(text)); //$NON-NLS-1$
         fill(boxToken(id), header, List.of(field), 0);
     }
 
@@ -475,7 +476,7 @@ public final class SnapshotExtractor {
             // A synthetic leading box-only field: label is the constant name, value unused.
             boxFields = new ArrayList<>(fields.size() + 1);
             // type is null (not "") so the renderer recognizes this as a box-only row.
-            boxFields.add(new DisplayableVariable(enumConstantName, null, Value.NullValue.INSTANCE));
+            boxFields.add(new DisplayableVariable(enumConstantName, null, new Value.BoxValue("null"))); //$NON-NLS-1$
             boxFields.addAll(fields);
         } else {
             boxFields = fields;
@@ -587,7 +588,7 @@ public final class SnapshotExtractor {
             return convert((IJavaValue) variable.getValue(), depth);
         } catch (DebugException e) {
             abortIfUnusable();
-            return new Value.Primitive("?"); //$NON-NLS-1$
+            return new Value.BoxValue("?"); //$NON-NLS-1$
         }
     }
 

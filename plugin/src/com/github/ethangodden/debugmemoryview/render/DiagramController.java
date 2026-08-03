@@ -606,12 +606,11 @@ public class DiagramController {
 
     /**
      * "label : &lt;box&gt;" — no type text (types live in the heap struct headers).
-     * The box holds the primitive text; it is empty for null cells and normal
-     * references (the arrow tail sits inside it), and shows a distinct dangling
-     * marker for a reference that resolves to no struct. A box-only field (the enum
-     * constant marker: value==null and no declared type) drops the label and
-     * shows the label text inside the box. The declared type moves into the
-     * tooltip.
+     * The box holds the value text ("null" for the debuggee's null); it is empty
+     * for normal references (the arrow tail sits inside it), and shows a distinct
+     * dangling marker for a reference that resolves to no struct. A box-only field
+     * (the enum constant marker: no declared type) drops the label and shows the
+     * label text inside the box. The declared type moves into the tooltip.
      */
     private VariableRowFigure newRow(DisplayableVariable variable, ChangeStatus status, List<PendingRef> refs,
             boolean fromStack) {
@@ -639,7 +638,7 @@ public class DiagramController {
             return row;
         }
 
-        // Primitive or NullValue: an empty cell (primitives fill it), no arrow.
+        // Box value ("null" included): the text fills the cell, no arrow.
         VariableRowFigure row = new VariableRowFigure(variable.label(), boxTextOf(value), null, status,
                 palette, fonts);
         hover.hookRow(row); // every row hover-tints
@@ -649,8 +648,8 @@ public class DiagramController {
 
     /**
      * A dangling reference: the target resolves to no struct. Rendered with a distinct
-     * severed-stub glyph in the cell — no arrow (unlike a live reference) and not
-     * an empty cell (unlike a null value) — so all three read differently.
+     * severed-stub glyph in the cell — no arrow (unlike a live reference) and not the
+     * "null" text (unlike a null cell) — so all three read differently.
      */
     private VariableRowFigure danglingRow(DisplayableVariable variable, ChangeStatus status) {
         VariableRowFigure row = new VariableRowFigure(variable.label(), "⇥⌀", null, status, palette, fonts);
@@ -659,12 +658,12 @@ public class DiagramController {
         return row;
     }
 
-    /** In-box text: primitives verbatim (char-capped), else empty (reference / null cell). */
+    /** In-box text: box values verbatim (char-capped), else empty (reference cell). */
     private String boxTextOf(Value value) {
-        if (value instanceof Value.Primitive) {
+        if (value instanceof Value.BoxValue) {
             return Ellipsis.valueText(value, settings.maxValueChars);
         }
-        return ""; // Reference / NullValue: an empty cell
+        return ""; // Reference: an empty cell (the arrow tail sits inside it)
     }
 
     private static String typedTooltip(String declaredTypeName, String fullValue) {

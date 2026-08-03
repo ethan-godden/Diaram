@@ -26,8 +26,8 @@ public class DiffEngineTest {
     private static final String UNREADABLE = "?"; //$NON-NLS-1$
 
     /** A primitive display-string value. */
-    private static Value.Primitive prim(String text) {
-        return new Value.Primitive(text);
+    private static Value.BoxValue prim(String text) {
+        return new Value.BoxValue(text);
     }
 
     /** A variable row whose label doubles as its diff identity (row key). */

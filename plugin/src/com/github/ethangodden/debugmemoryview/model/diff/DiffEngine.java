@@ -79,14 +79,14 @@ public final class DiffEngine {
     }
 
     /** A ghost reference survives only if it resolved in prev AND its target still exists in curr;
-     * otherwise it becomes {@link Value.NullValue} (empty cell, no arrow). Non-references pass
-     * through. */
+     * otherwise it becomes {@code new Value.BoxValue("null")} (a "null" cell, no arrow).
+     * Non-references pass through. */
     private static Value ghostValue(Value v, MemorySnapshot prev, MemorySnapshot curr) {
         if (!(v instanceof Value.Reference ref)) {
             return v;
         }
         if (prev.resolve(ref).isEmpty() || curr.resolve(ref).isEmpty()) {
-            return Value.NullValue.INSTANCE;
+            return new Value.BoxValue("null");
         }
         return ref;
     }
@@ -233,14 +233,14 @@ public final class DiffEngine {
     }
 
     /**
-     * Values compare so that: two {@link Value.NullValue}s are always equal; two primitives are
-     * equal iff their strings match; two references are equal iff they resolve to the same target
-     * struct (both dangling counts as equal); different kinds of {@link Value} are never equal.
+     * Values compare so that: two box values are equal iff their strings match (the debuggee's
+     * null is the string "null", so two nulls are equal); two references are equal iff they
+     * resolve to the same target struct (both dangling counts as equal); different kinds of
+     * {@link Value} are never equal.
      */
     static boolean valueEquals(Value a, Value b, MemorySnapshot da, MemorySnapshot db) {
         return switch (a) {
-            case Value.Primitive pa -> b instanceof Value.Primitive pb && pa.value().equals(pb.value());
-            case Value.NullValue() -> b instanceof Value.NullValue;
+            case Value.BoxValue pa -> b instanceof Value.BoxValue pb && pa.value().equals(pb.value());
             case Value.Reference ra -> {
                 if (!(b instanceof Value.Reference rb)) {
                     yield false;

@@ -48,12 +48,12 @@ public class NeutralModelCutoverTest {
     @Test
     void testBuilderOnlySnapshotDiffsAndLaysOut() {
         MemorySnapshot v1 = MemorySnapshot.builder("t")
-                .thread(thread(frame("f", List.of(var("x", new Value.Primitive("1"))))))
-                .fill(struct("P", "P #1", List.of(var("a", new Value.Primitive("1")))))
+                .thread(thread(frame("f", List.of(var("x", new Value.BoxValue("1"))))))
+                .fill(struct("P", "P #1", List.of(var("a", new Value.BoxValue("1")))))
                 .build();
         MemorySnapshot v2 = MemorySnapshot.builder("t")
-                .thread(thread(frame("f", List.of(var("x", new Value.Primitive("2"))))))
-                .fill(struct("P", "P #1", List.of(var("a", new Value.Primitive("1")))))
+                .thread(thread(frame("f", List.of(var("x", new Value.BoxValue("2"))))))
+                .fill(struct("P", "P #1", List.of(var("a", new Value.BoxValue("1")))))
                 .build();
 
         MemoryDiff diff = DiffEngine.diff(v1, v2);
@@ -64,24 +64,24 @@ public class NeutralModelCutoverTest {
         assertEquals(List.of("P"), order, "second-frontend snapshot: the layouter orders its struct ids");
     }
 
-    // ---------- dangling vs NullValue vs live reference are distinct in the model ----------
+    // ---------- dangling vs null vs live reference are distinct in the model ----------
     @Test
-    void testDanglingNullValueAndLiveReferenceAreDistinct() {
+    void testDanglingNullAndLiveReferenceAreDistinct() {
         MemorySnapshot.Builder b = MemorySnapshot.builder("t");
         Value.Reference live = b.reference("R");
         Value.Reference dangling = b.reference("ghost"); // never provided
         b.thread(thread(frame("f", List.of(
                 var("live", live),
-                var("absent", Value.NullValue.INSTANCE),
+                var("absent", new Value.BoxValue("null")),
                 var("dangling", dangling)))));
         b.fill(struct("R", "R #1", List.of()));
         MemorySnapshot d = b.build();
 
         assertTrue(d.resolve(live).isPresent(), "a live reference resolves to its target struct");
-        assertEquals(Value.NullValue.INSTANCE, d.threads().get(0).frames().get(0).variables().get(1).value(),
-                "the absent value is a NullValue (not a reference)");
+        assertEquals(new Value.BoxValue("null"), d.threads().get(0).frames().get(0).variables().get(1).value(),
+                "the debuggee's null is the box value \"null\" (not a reference)");
         assertTrue(d.resolve(dangling).isEmpty(),
-                "a dangling reference resolves to nothing, distinct from NullValue and from a live reference");
+                "a dangling reference resolves to nothing, distinct from a null cell and from a live reference");
     }
 
     // ---------- ghost references stay live for surviving targets ----------
@@ -128,8 +128,8 @@ public class NeutralModelCutoverTest {
         MemoryDiff diff = DiffEngine.diff(prev, curr);
         DisplayableStruct ghostA = diff.deletedStructs().stream()
                 .filter(x -> x.id().equals("A")).findFirst().orElseThrow();
-        assertEquals(Value.NullValue.INSTANCE, ghostA.variables().get(0).value(),
-                "a ghost reference whose target is also gone becomes a NullValue (empty cell, no arrow), never a wrong-struct arrow");
+        assertEquals(new Value.BoxValue("null"), ghostA.variables().get(0).value(),
+                "a ghost reference whose target is also gone becomes the box value \"null\" (no arrow), never a wrong-struct arrow");
     }
 
     // ---------- an unexplored (stub) struct never resolves as dangling ----------
