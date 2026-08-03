@@ -13,8 +13,9 @@ import com.github.ethangodden.debugmemoryview.render.FontKit;
 
 /**
  * The literal value cell of a variable row: a 1 px palette-border box holding
- * the (pre-ellipsized) primitive text, "?" for unreadables, and nothing for
- * references and nulls — a reference's connection tail starts inside this box.
+ * the (pre-ellipsized) box-value text ("null" for the debuggee's null, "?" for
+ * unreadables) and nothing for references — a reference's connection tail
+ * starts inside this box.
  * Transparent so the row's status tint / hover highlight shows through.
  *
  * The {@link #MIN_WIDTH} floor is applied by {@link VariableRowFigure}'s

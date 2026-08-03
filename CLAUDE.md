@@ -91,7 +91,8 @@ Packages below sit under the root `com.github.ethangodden.debugmemoryview`.
   are heap structs too, in discovery order). A `DisplayableStruct`/`DisplayableFrame` holds ordered
   `DisplayableVariable` rows (label/type/value), with `explored`/`omitted` hints on structs. Identity
   is an opaque id (struct id, frame id, thread id) — never a JVM id. A `Value` is
-  `Primitive | Reference` (or `null` = the absent/null value); a `Reference` is an opaque token,
+  `BoxValue | Reference` (never Java `null` — the debuggee's null is `BoxValue("null")`); a
+  `Reference` is an opaque token,
   scoped to the snapshot's `targetId`, resolved only via `MemorySnapshot#resolve` to a
   `DisplayableStruct` or to nothing (a **dangling pointer**). `model.diff` computes `MemoryDiff` from
   two snapshots: one map of per-variable statuses keyed by the row's **address** — its container id
@@ -125,7 +126,7 @@ Packages below sit under the root `com.github.ethangodden.debugmemoryview`.
 - Reference values compare by **resolved target** (`DiffEngine.valueEquals`):
   retargeting an arrow is the change; a target's mutation shows on the target's
   own rows, not on every inbound arrow. Two dangling references are equal, and two unreadable values
-  (both mapped to `Primitive("?")`) are equal.
+  (both mapped to `BoxValue("?")`) are equal.
 
 ## Conventions
 

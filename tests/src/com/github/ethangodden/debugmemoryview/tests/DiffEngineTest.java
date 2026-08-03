@@ -96,12 +96,16 @@ public class DiffEngineTest {
     void testThreadSwitchEveryRowNew() {
         Snap p = new Snap("thread-A"); //$NON-NLS-1$
         p.frame("f#main", "Demo.main() line 10", List.of(var("x", prim("1")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        p.struct("1", "P", List.of(var("a", prim("1")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
         Snap c = new Snap("thread-B"); //$NON-NLS-1$
         c.frame("f#main", "Demo.main() line 10", List.of(var("x", prim("1")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        c.struct("1", "P", List.of(var("a", prim("1")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
 
         MemoryDiff d = DiffEngine.diff(p.build(), c.build());
         // Every address resets: the same row key on both sides still reads NEW, not UNCHANGED.
-        assertEquals(ChangeStatus.NEW, d.statusOf("f#main", "x"), "thread switch: variable NEW"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        assertEquals(ChangeStatus.NEW, d.statusOf("f#main", "x"), "thread switch: frame local NEW"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        assertEquals(ChangeStatus.NEW, d.statusOf("1", "a"), //$NON-NLS-1$ //$NON-NLS-2$
+                "thread switch: persisting struct's row also NEW"); //$NON-NLS-1$
     }
 
     @Test
@@ -260,6 +264,63 @@ public class DiffEngineTest {
         MemoryDiff d = DiffEngine.diff(p.build(), c.build());
         assertEquals(ChangeStatus.UNCHANGED, d.statusOf("f#run", "r"), //$NON-NLS-1$ //$NON-NLS-2$
                 "same target: referring row UNCHANGED"); //$NON-NLS-1$
+    }
+
+    @Test
+    void testStructFieldReferenceRetargetIsUpdate() {
+        // The canonical linked-list mutation: node.next moves from A to B. The struct row path
+        // (behind the unexplored guard) must report it just like a frame local would.
+        Snap p = snap();
+        p.reserve("A", "A"); //$NON-NLS-1$ //$NON-NLS-2$
+        p.struct("node", "Node", List.of(var("next", p.ref("A")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+        Snap c = snap();
+        c.reserve("A", "A"); //$NON-NLS-1$ //$NON-NLS-2$
+        c.reserve("B", "B"); //$NON-NLS-1$ //$NON-NLS-2$
+        c.struct("node", "Node", List.of(var("next", c.ref("B")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
+
+        MemoryDiff d = DiffEngine.diff(p.build(), c.build());
+        assertEquals(ChangeStatus.UPDATED, d.statusOf("node", "next"), //$NON-NLS-1$ //$NON-NLS-2$
+                "struct retarget: referring field UPDATED"); //$NON-NLS-1$
+    }
+
+    @Test
+    void testDanglingReferencesCompareEqual() {
+        // Two dangling references are equal, even with different target tokens.
+        Snap p = snap();
+        p.frame("f#run", "Demo.run() line 5", List.of(var("r", p.ref("goneX")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        Snap c = snap();
+        c.frame("f#run", "Demo.run() line 5", List.of(var("r", c.ref("goneY")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
+        MemoryDiff d = DiffEngine.diff(p.build(), c.build());
+        assertEquals(ChangeStatus.UNCHANGED, d.statusOf("f#run", "r"), //$NON-NLS-1$ //$NON-NLS-2$
+                "dangling both sides: referring row UNCHANGED"); //$NON-NLS-1$
+    }
+
+    @Test
+    void testLiveToDanglingReferenceIsUpdate() {
+        Snap p = snap();
+        p.reserve("A", "A"); //$NON-NLS-1$ //$NON-NLS-2$
+        p.frame("f#run", "Demo.run() line 5", List.of(var("r", p.ref("A")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        Snap c = snap();
+        c.frame("f#run", "Demo.run() line 5", List.of(var("r", c.ref("A")))); // A never provided in curr //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
+        MemoryDiff d = DiffEngine.diff(p.build(), c.build());
+        assertEquals(ChangeStatus.UPDATED, d.statusOf("f#run", "r"), //$NON-NLS-1$ //$NON-NLS-2$
+                "live -> dangling: referring row UPDATED"); //$NON-NLS-1$
+    }
+
+    @Test
+    void testNullToReferenceIsUpdate() {
+        // Different kinds of Value are never equal: x == null, then x = new P().
+        Snap p = snap();
+        p.frame("f#run", "Demo.run() line 5", List.of(var("x", prim("null")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+        Snap c = snap();
+        c.reserve("A", "P"); //$NON-NLS-1$ //$NON-NLS-2$
+        c.frame("f#run", "Demo.run() line 5", List.of(var("x", c.ref("A")))); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+
+        MemoryDiff d = DiffEngine.diff(p.build(), c.build());
+        assertEquals(ChangeStatus.UPDATED, d.statusOf("f#run", "x"), //$NON-NLS-1$ //$NON-NLS-2$
+                "null -> reference: row UPDATED"); //$NON-NLS-1$
     }
 
     @Test

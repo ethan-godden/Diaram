@@ -2,13 +2,13 @@ package samples;
 
 /**
  * Designed for the diff highlighting. On each loop iteration this program
- * mutates existing state, allocates something NEW, and drops a reference so an
- * object becomes DELETED (rendered once as a translucent ghost).
+ * mutates existing state and allocates something NEW.
  *
  * <p>Set a breakpoint at the marked line and repeatedly <b>Resume</b> (F8). Each
- * suspend the view highlights what changed since the previous one: {@code counter}
- * and the array element as CHANGED, the freshly allocated box as NEW, and the
- * previously held box as a DELETED ghost.
+ * suspend the view highlights the variables that changed since the previous one:
+ * {@code counter}, the array element, and the retargeted {@code held} local as
+ * UPDATED, and the fresh box's rows as NEW. The dropped box simply disappears —
+ * removals are not tracked.
  */
 public class MutationOverTimeDemo {
 
@@ -27,10 +27,10 @@ public class MutationOverTimeDemo {
 		Box held = new Box(0);
 
 		for (int i = 1; i <= 8; i++) {
-			counter += i;                 // CHANGED: static counter
-			running[i % running.length] = counter; // CHANGED: one array cell
+			counter += i;                 // UPDATED: static counter
+			running[i % running.length] = counter; // UPDATED: one array cell
 			Box fresh = new Box(counter); // NEW: a fresh object each iteration
-			held = fresh;                 // previous held box loses its last reference -> DELETED ghost
+			held = fresh;                 // UPDATED: held retargets; the old box just disappears
 			System.out.println("i=" + i + " held=" + held.payload); // breakpoint here; Resume repeatedly
 		}
 	}

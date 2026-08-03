@@ -72,11 +72,6 @@ public final class ColorPalette {
         columnBg = color(background);
     }
 
-    /** False when the view toggle or the workspace preference disables change coloring. */
-    public boolean isHighlighting() {
-        return highlighting;
-    }
-
     /** Status actually rendered: everything UNCHANGED while highlighting is off. */
     public ChangeStatus effective(ChangeStatus status) {
         return highlighting ? status : ChangeStatus.UNCHANGED;

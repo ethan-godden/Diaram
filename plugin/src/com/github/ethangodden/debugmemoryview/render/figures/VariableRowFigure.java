@@ -44,7 +44,6 @@ public class VariableRowFigure extends Figure {
     private static final int BOX_KEEP_MAX = 120;
 
     private final @Nullable String targetToken; // null for primitives / null refs / dangling / unreadables
-    private final ChangeStatus status;
     private final @Nullable Label nameLabel; // null for box-only rows
     private final ValueBoxFigure valueBox;
     private final @Nullable Color baseBackground; // null when the row has no tint
@@ -52,7 +51,6 @@ public class VariableRowFigure extends Figure {
     public VariableRowFigure(@Nullable String name, @Nullable String boxText, @Nullable String targetToken,
             ChangeStatus status, ColorPalette palette, FontKit fonts) {
         this.targetToken = targetToken;
-        this.status = status;
         setLayoutManager(new RowLayout());
         setBorder(new CompoundBorder(new StatusStripeBorder(palette.stripe(status)),
                 new MarginBorder(0, 8, 0, 0)));
@@ -77,10 +75,6 @@ public class VariableRowFigure extends Figure {
     /** The target heap box token this reference row points at, or null (non-reference row). */
     public @Nullable String targetToken() {
         return targetToken;
-    }
-
-    public ChangeStatus status() {
-        return status;
     }
 
     /** The value cell; connection tails anchor to its center. */

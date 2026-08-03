@@ -8,8 +8,8 @@
 An Eclipse plug-in that draws a **live memory diagram of a suspended Java debug session** — the
 stack (frames + locals), the heap (objects, arrays, strings, boxed values, enums), and static
 fields — as boxes and reference arrows on a Draw2d canvas. Between suspends it diffs consecutive
-snapshots of the same thread and highlights what changed (**NEW / CHANGED / DELETED**); deleted
-items render exactly once as translucent *ghosts*.
+snapshots of the same thread and highlights each variable as **NEW / UPDATED** (unchanged variables
+stay uncoloured); variables are the only diffed thing, and removals are not tracked.
 
 The plug-in contributes a view named **Memory Diagram** (in the **Debug** category). The bundle is
 `DebugMemoryView`; the installable feature is labelled *Debug Memory View*.
@@ -28,9 +28,10 @@ The plug-in contributes a view named **Memory Diagram** (in the **Debug** catego
   constants, and unexplored stubs (`(not explored)`).
 - **Statics** — each class with static fields renders as its own box at the top of the heap column
   (toggleable).
-- **Change highlighting** — items that appeared, changed, or vanished since the previous suspend of
-  the same thread are coloured NEW / CHANGED / DELETED, with deleted items shown once as translucent
-  ghosts. Colours are theme-aware (detected from the workbench background) and customizable.
+- **Change highlighting** — variables (locals, fields, array elements) that appeared or changed
+  value since the previous suspend of the same thread are coloured NEW / UPDATED. A variable is NEW
+  when its address is new (a same-named local in a different frame is a different variable).
+  Colours are theme-aware (detected from the workbench background) and customizable.
 - **Reference arrows** — value boxes that hold a reference draw an arrow to their target. Hovering a
   reference row previews the target object; clicking it scrolls to the target and flashes its outline.
 - **Bounded extraction** — the JDI walk is capped (objects, depth, array elements, fields, string
@@ -93,7 +94,7 @@ are handed to the view on the UI thread, gated so a superseded snapshot is never
    - **Hover** a reference row for a preview of its target; **click** it to scroll to and flash the
      target box. Click any box header to collapse/expand it.
 4. Customize colours at **Window ▸ Preferences ▸ Memory Diagram** — toggle change highlighting and set
-   the New / Changed / Deleted accents (Restore Defaults returns the theme-aware built-ins).
+   the New / Updated accents (Restore Defaults returns the theme-aware built-ins).
 
 ## Build from source
 
