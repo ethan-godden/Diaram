@@ -127,7 +127,7 @@ public final class SnapshotExtractor {
         // even though frame-variable references reserve object stubs during frame extraction.
         for (IStackFrame frame : raw) {
             IJavaStackFrame javaFrame = (IJavaStackFrame) frame;
-            if (!readOr(javaFrame::isObsolete, Boolean.TRUE).booleanValue()) {
+            if (javaFrame.isObsolete()) {
                 registerStaticsType(javaFrame);
             }
         }
