@@ -10,7 +10,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.graphics.Color;
 
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
-import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /**
  * A variable container: an opaque, bordered box with a collapsible "▾/▸ title"
@@ -25,22 +25,22 @@ import com.github.ethangodden.debugmemoryview.render.FontKit;
  */
 public class ContainerFigure extends Figure {
 
-    protected final ColorPalette palette;
+    protected final PluginConfig config;
     protected final Label header;
     protected final Figure body;
 
     public ContainerFigure(String title, boolean expanded,
-            ColorPalette palette, FontKit fonts, @Nullable Runnable onToggle) {
-        this.palette = palette;
+            PluginConfig config, @Nullable Runnable onToggle) {
+        this.config = config;
 
         ToolbarLayout layout = new ToolbarLayout(false);
         layout.setStretchMinorAxis(true);
         setLayoutManager(layout);
         setOpaque(true);
-        setBackgroundColor(palette.boxBackground());
-        setBorder(borderFor(palette, false));
+        setBackgroundColor(config.palette().boxBackground());
+        setBorder(borderFor(config, false));
 
-        header = BoxFigures.collapsibleHeader(title, expanded, palette, fonts);
+        header = BoxFigures.collapsibleHeader(title, expanded, config);
         add(header);
 
         body = new Figure();
@@ -63,7 +63,8 @@ public class ContainerFigure extends Figure {
      * the accent while keeping the SAME width and style, so a hover or reveal
      * never shifts the box geometry (no inner margin needed to reserve the swap).
      */
-    static Border borderFor(ColorPalette palette, boolean hover) {
+    static Border borderFor(PluginConfig config, boolean hover) {
+        ColorPalette palette = config.palette();
         Color color = hover ? palette.hoverAccent() : palette.boxBorder();
         return new LineBorder(color, 1);
     }

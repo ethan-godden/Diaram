@@ -73,12 +73,12 @@ public final class HoverController {
         }
         reset();
         current = row;
-        ColorPalette palette = controller.palette();
-        row.setHoverHighlight(true, palette);
+        PluginConfig config = controller.config();
+        row.setHoverHighlight(true, config);
 
         currentConnection = controller.connectionFor(row);
         if (currentConnection != null) {
-            currentConnection.setHover(true, palette);
+            currentConnection.setHover(true, config);
             controller.raiseConnection(currentConnection); // paint over sibling arrows
         }
         if (row.targetToken() != null) {
@@ -105,10 +105,10 @@ public final class HoverController {
     /** Clears the slot and restores visuals; safe on figures about to be discarded. */
     public void reset() {
         if (current != null) {
-            current.setHoverHighlight(false, controller.palette());
+            current.setHoverHighlight(false, controller.config());
         }
         if (currentConnection != null) {
-            currentConnection.setHover(false, controller.palette());
+            currentConnection.setHover(false, controller.config());
         }
         if (currentTarget != null) {
             currentTarget.setHoverHighlight(false);

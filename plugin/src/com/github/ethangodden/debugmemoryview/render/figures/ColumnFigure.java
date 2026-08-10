@@ -9,13 +9,14 @@ import org.eclipse.draw2d.ScrollPane;
 
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
 import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /** A diagram column: header label on top, ScrollPane filling the rest. */
 public class ColumnFigure extends Figure {
 
     private final Label header;
 
-    public ColumnFigure(String title, ScrollPane pane, ColorPalette palette, FontKit fonts) {
+    public ColumnFigure(String title, ScrollPane pane, PluginConfig config) {
         setLayoutManager(new BorderLayout());
         setOpaque(true);
         header = new Label(title);
@@ -24,7 +25,7 @@ public class ColumnFigure extends Figure {
         header.setBorder(new MarginBorder(4, 8, 4, 8));
         add(header, BorderLayout.TOP);
         add(pane, BorderLayout.CENTER);
-        restyle(palette, fonts);
+        restyle(config);
     }
 
     public Label header() {
@@ -32,7 +33,9 @@ public class ColumnFigure extends Figure {
     }
 
     /** Chrome persists across rebuilds; re-apply theme colors on every render. */
-    public void restyle(ColorPalette palette, FontKit fonts) {
+    public void restyle(PluginConfig config) {
+        ColorPalette palette = config.palette();
+        FontKit fonts = config.fonts();
         setBackgroundColor(palette.columnBackground());
         header.setFont(fonts.header());
         header.setBackgroundColor(palette.headerBackground());

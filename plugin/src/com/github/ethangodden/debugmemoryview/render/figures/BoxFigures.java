@@ -8,6 +8,7 @@ import org.eclipse.draw2d.PositionConstants;
 
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
 import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /** Shared header + toggle wiring for the collapsible box figures (heap objects, stack frames, statics). */
 final class BoxFigures {
@@ -16,7 +17,9 @@ final class BoxFigures {
     }
 
     /** The "▾/▸ title" header label with the collapsible-box chrome: opaque header band, LEFT alignment. */
-    static Label collapsibleHeader(String title, boolean expanded, ColorPalette palette, FontKit fonts) {
+    static Label collapsibleHeader(String title, boolean expanded, PluginConfig config) {
+        ColorPalette palette = config.palette();
+        FontKit fonts = config.fonts();
         Label header = new Label((expanded ? "▾ " : "▸ ") + title);
         header.setLabelAlignment(PositionConstants.LEFT);
         header.setFont(fonts.header());

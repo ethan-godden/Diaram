@@ -4,8 +4,7 @@ import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.jdt.annotation.Nullable;
 
-import com.github.ethangodden.debugmemoryview.render.ColorPalette;
-import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /**
  * One heap object box (also used for arrays): a {@link ContainerFigure} whose
@@ -25,8 +24,8 @@ public class HeapObjectFigure extends ContainerFigure {
     private boolean hoverHighlight;
 
     public HeapObjectFigure(String title, boolean collapsed,
-            ColorPalette palette, FontKit fonts, @Nullable Runnable onToggle) {
-        super(title, !collapsed, palette, fonts, onToggle);
+            PluginConfig config, @Nullable Runnable onToggle) {
+        super(title, !collapsed, config, onToggle);
     }
 
     /** Tooltip on the header label (STRING boxes: the full quoted content); null clears it. */
@@ -57,7 +56,7 @@ public class HeapObjectFigure extends ContainerFigure {
         }
         hoverHighlight = on;
         // Same width/style as the base border, recolored — the box never resizes.
-        setBorder(borderFor(palette, on));
+        setBorder(borderFor(config, on));
         repaint();
     }
 

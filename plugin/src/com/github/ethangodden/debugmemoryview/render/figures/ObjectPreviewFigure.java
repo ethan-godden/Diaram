@@ -16,6 +16,7 @@ import com.github.ethangodden.debugmemoryview.model.MemorySnapshot.Value;
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
 import com.github.ethangodden.debugmemoryview.render.Ellipsis;
 import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /**
  * Tooltip body for a reference row: the target struct's header line plus the
@@ -31,7 +32,9 @@ public class ObjectPreviewFigure extends Figure {
     private static final int MAX_LINES = 5;
     private static final int MAX_LINE_CHARS = 80;
 
-    public ObjectPreviewFigure(DisplayableStruct struct, ColorPalette palette, FontKit fonts) {
+    public ObjectPreviewFigure(DisplayableStruct struct, PluginConfig config) {
+        ColorPalette palette = config.palette();
+        FontKit fonts = config.fonts();
         ToolbarLayout layout = new ToolbarLayout(false);
         layout.setStretchMinorAxis(true);
         setLayoutManager(layout);
@@ -49,10 +52,10 @@ public class ObjectPreviewFigure extends Figure {
         List<String> lines = new ArrayList<>();
         int omitted = collectLines(struct, lines);
         for (String line : lines) {
-            add(bodyLine(line, palette, fonts));
+            add(bodyLine(line, config));
         }
         if (omitted > 0) {
-            Label more = bodyLine("… +" + omitted + " more", palette, fonts);
+            Label more = bodyLine("… +" + omitted + " more", config);
             more.setForegroundColor(palette.mutedForeground());
             add(more);
         }
@@ -81,11 +84,11 @@ public class ObjectPreviewFigure extends Figure {
         return field.label() + " = " + Ellipsis.valueText(field.value(), MAX_LINE_CHARS);
     }
 
-    private static Label bodyLine(String text, ColorPalette palette, FontKit fonts) {
+    private static Label bodyLine(String text, PluginConfig config) {
         Label label = new Label(text);
         label.setLabelAlignment(PositionConstants.LEFT);
-        label.setFont(fonts.value());
-        label.setForegroundColor(palette.textForeground());
+        label.setFont(config.fonts().value());
+        label.setForegroundColor(config.palette().textForeground());
         label.setBorder(new MarginBorder(1, 6, 1, 6));
         return label;
     }

@@ -15,6 +15,7 @@ import org.eclipse.swt.graphics.Color;
 import com.github.ethangodden.debugmemoryview.model.diff.ChangeStatus;
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
 import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /**
  * One row = one variable / field / static field / array element, drawn as
@@ -49,8 +50,10 @@ public class VariableRowFigure extends Figure {
     private final @Nullable Color baseBackground; // null when the row has no tint
 
     public VariableRowFigure(@Nullable String name, @Nullable String boxText, @Nullable String targetToken,
-            ChangeStatus status, ColorPalette palette, FontKit fonts) {
+            ChangeStatus status, PluginConfig config) {
         this.targetToken = targetToken;
+        ColorPalette palette = config.palette();
+        FontKit fonts = config.fonts();
         setLayoutManager(new RowLayout());
         setBorder(new CompoundBorder(new StatusStripeBorder(palette.stripe(status)),
                 new MarginBorder(0, 8, 0, 0)));
@@ -63,7 +66,7 @@ public class VariableRowFigure extends Figure {
         } else {
             nameLabel = null;
         }
-        valueBox = new ValueBoxFigure(boxText, status, palette, fonts);
+        valueBox = new ValueBoxFigure(boxText, status, config);
         add(valueBox);
         baseBackground = palette.rowTint(status);
         if (baseBackground != null) {
@@ -82,10 +85,10 @@ public class VariableRowFigure extends Figure {
         return valueBox;
     }
 
-    public void setHoverHighlight(boolean hover, ColorPalette palette) {
+    public void setHoverHighlight(boolean hover, PluginConfig config) {
         if (hover) {
             setOpaque(true);
-            setBackgroundColor(palette.hoverRowBackground());
+            setBackgroundColor(config.palette().hoverRowBackground());
         } else {
             setBackgroundColor(baseBackground);
             setOpaque(baseBackground != null);

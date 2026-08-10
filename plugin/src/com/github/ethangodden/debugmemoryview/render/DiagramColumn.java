@@ -21,7 +21,7 @@ final class DiagramColumn {
     private final ScrollPane pane;
     private final ColumnFigure column;
 
-    DiagramColumn(String title, int spacing, ColorPalette palette, FontKit fonts) {
+    DiagramColumn(String title, int spacing, PluginConfig config) {
         contents = newVerticalContents(spacing);
         pane = new ScrollPane();
         // No stock bars anywhere: ScrollThumbOverlay paints auto-hiding thumbs instead.
@@ -34,7 +34,7 @@ final class DiagramColumn {
         // thumb + Shift+wheel stay wired (dormant until that extreme).
         pane.getViewport().setContentsTracksWidth(true);
         pane.setContents(contents);
-        column = new ColumnFigure(title, pane, palette, fonts);
+        column = new ColumnFigure(title, pane, config);
     }
 
     Figure contents() {
@@ -61,8 +61,8 @@ final class DiagramColumn {
         contents.removeAll();
     }
 
-    void restyle(ColorPalette palette, FontKit fonts) {
-        column.restyle(palette, fonts);
+    void restyle(PluginConfig config) {
+        column.restyle(config);
     }
 
     private static Figure newVerticalContents(int spacing) {

@@ -39,6 +39,7 @@ import com.github.ethangodden.debugmemoryview.model.MemorySnapshot;
 import com.github.ethangodden.debugmemoryview.model.MemorySnapshot.DisplayableThread;
 import com.github.ethangodden.debugmemoryview.model.diff.MemoryDiff;
 import com.github.ethangodden.debugmemoryview.render.DiagramController;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /**
  * The Memory Diagram view: a PageBook flipping between a placeholder label and
@@ -55,7 +56,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
     private static final int[] FIELD_CHOICES = { 8, 16, 32 };
     private static final int[] ARRAY_ELEMENT_CHOICES = { 10, 25, 50 };
 
-    private final ViewSettings settings = new ViewSettings();
+    private final PluginConfig config = new PluginConfig();
 
     private PageBook pageBook;
     private Label placeholder;
@@ -79,13 +80,13 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
     @Override
     public void init(IViewSite site, @Nullable IMemento memento) throws PartInitException {
         super.init(site, memento);
-        settings.restore(memento);
+        config.restore(memento);
     }
 
     @Override
     public void saveState(IMemento memento) {
         super.saveState(memento);
-        settings.save(memento);
+        config.save(memento);
     }
 
     @Override
@@ -93,7 +94,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
         IPreferenceStore store = Activator.getDefault().getPreferenceStore();
         // The preference store is the master copy of the highlight toggle; the
         // per-view flag is kept identical so their AND never surprises.
-        settings.highlightChanges = store.getBoolean(PreferenceConstants.PREF_HIGHLIGHT_CHANGES);
+        config.highlightChanges = store.getBoolean(PreferenceConstants.PREF_HIGHLIGHT_CHANGES);
 
         pageBook = new PageBook(parent, SWT.NONE);
 
@@ -107,7 +108,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
         canvas.getViewport().setContentsTracksHeight(true);
         // Bound to the canvas: colors/fonts are disposed with the control.
         LocalResourceManager resources = new LocalResourceManager(JFaceResources.getResources(), canvas);
-        controller = new DiagramController(canvas, resources, settings);
+        controller = new DiagramController(canvas, resources, config);
         canvas.setContents(controller.getRootFigure());
         canvas.addMouseWheelListener(controller::handleWheel);
         // Trackpad two-finger horizontal swipes come through as a distinct SWT
@@ -123,7 +124,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
         pageBook.showPage(placeholder);
 
         pipeline = new SnapshotPipeline();
-        pipeline.setLimits(ExtractionLimits.defaults().withMaxObjects(settings.maxHeapObjectsRendered));
+        pipeline.setLimits(ExtractionLimits.defaults().withMaxObjects(config.maxHeapObjectsRendered));
         // Consumer first: install() seeds from the current debug context and may
         // publish immediately (view opened mid-suspend).
         pipeline.addConsumer(this);
@@ -239,7 +240,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
         }
         if (PreferenceConstants.PREF_HIGHLIGHT_CHANGES.equals(property)) {
             boolean on = store.getBoolean(PreferenceConstants.PREF_HIGHLIGHT_CHANGES);
-            settings.highlightChanges = on;
+            config.highlightChanges = on;
             highlightAction.setChecked(on);
         }
         controller.refresh(); // repick colors / highlight state
@@ -273,7 +274,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
             }
         };
         staticsAction.setToolTipText("Show the statics section in the heap column");
-        staticsAction.setChecked(settings.showStatics);
+        staticsAction.setChecked(config.showStatics);
 
         Action expandAllAction = new Action("Expand All") {
             @Override
@@ -305,7 +306,7 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
             @Override
             public void run() {
                 boolean on = isChecked();
-                settings.highlightChanges = on;
+                config.highlightChanges = on;
                 // The store change fires preferenceChanged(), which refreshes.
                 store.setValue(PreferenceConstants.PREF_HIGHLIGHT_CHANGES, on);
             }
@@ -326,11 +327,11 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
     private void contributeToActionBars() {
         IActionBars bars = getViewSite().getActionBars();
         IMenuManager menu = bars.getMenuManager();
-        menu.add(radioGroup("Max Heap Objects", HEAP_OBJECT_CHOICES, settings.maxHeapObjectsRendered,
+        menu.add(radioGroup("Max Heap Objects", HEAP_OBJECT_CHOICES, config.maxHeapObjectsRendered,
                 this::applyHeapObjectCap));
-        menu.add(radioGroup("Max Fields per Object", FIELD_CHOICES, settings.maxFieldsPerObjectRendered,
+        menu.add(radioGroup("Max Fields per Object", FIELD_CHOICES, config.maxFieldsPerObjectRendered,
                 this::applyFieldCap));
-        menu.add(radioGroup("Max Array Elements", ARRAY_ELEMENT_CHOICES, settings.maxArrayElementsRendered,
+        menu.add(radioGroup("Max Array Elements", ARRAY_ELEMENT_CHOICES, config.maxArrayElementsRendered,
                 this::applyArrayElementCap));
         menu.add(new Separator());
         menu.add(highlightAction);
@@ -355,20 +356,20 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
     }
 
     private void applyHeapObjectCap(int value) {
-        settings.maxHeapObjectsRendered = value;
+        config.maxHeapObjectsRendered = value;
         pipeline.setLimits(ExtractionLimits.defaults().withMaxObjects(value)); // takes effect on the next extraction
         controller.clearHeapCapOverride(); // an explicit choice beats "+N not rendered…"
         controller.refresh(); // render cap applies to the cached snapshot immediately
     }
 
     private void applyFieldCap(int value) {
-        settings.maxFieldsPerObjectRendered = value;
+        config.maxFieldsPerObjectRendered = value;
         controller.clearFieldCapOverrides();
         controller.refresh();
     }
 
     private void applyArrayElementCap(int value) {
-        settings.maxArrayElementsRendered = value;
+        config.maxArrayElementsRendered = value;
         controller.clearArrayElementCapOverrides();
         controller.refresh();
     }

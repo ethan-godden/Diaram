@@ -44,7 +44,6 @@ import com.github.ethangodden.debugmemoryview.render.figures.HeapObjectFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.MoreRowFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.ObjectPreviewFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.VariableRowFigure;
-import com.github.ethangodden.debugmemoryview.ui.ViewSettings;
 
 /**
  * Owns the whole Draw2d figure tree of the memory diagram and orchestrates the
@@ -74,7 +73,7 @@ public class DiagramController {
     private static final int FLASH_MILLIS = 900;
 
     private final FigureCanvas canvas;
-    private final ViewSettings settings;
+    private final PluginConfig config;
     private final ColorPalette palette;
     private final FontKit fonts;
 
@@ -105,12 +104,13 @@ public class DiagramController {
     private record PendingRef(VariableRowFigure row, String targetToken, ChangeStatus status, boolean fromStack) {
     }
 
-    public DiagramController(FigureCanvas canvas, ResourceManager resources, ViewSettings settings) {
+    public DiagramController(FigureCanvas canvas, ResourceManager resources, PluginConfig config) {
         this.canvas = canvas;
-        this.settings = settings;
-        palette = new ColorPalette(resources);
-        palette.refresh(canvas, settings.highlightChanges);
-        fonts = new FontKit(resources);
+        this.config = config;
+        config.initRenderResources(resources);
+        palette = config.palette();
+        fonts = config.fonts();
+        palette.refresh(canvas, config.highlightChanges);
 
         // The root contents fill the viewport while it is wide enough; once the
         // diagram's natural width (see ColumnsLayout) exceeds the viewport the
@@ -122,9 +122,9 @@ public class DiagramController {
         canvas.getViewport().setContentsTracksWidth(true);
         canvas.getViewport().setContentsTracksHeight(true);
 
-        stack = new DiagramColumn("Stack", 8, palette, fonts);
+        stack = new DiagramColumn("Stack", 8, config);
 
-        heap = new DiagramColumn("Heap", 12, palette, fonts);
+        heap = new DiagramColumn("Heap", 12, config);
         // Boxes sit flush LEFT; the intra-heap arcs bow on the RIGHT, so reserve
         // their bow width there: same-viewport connections clip to the pane's
         // client area, so the arcs must bow within the contents, not the gutter.
@@ -219,7 +219,7 @@ public class DiagramController {
         if (snapshot != null) {
             rebuild();
         } else {
-            palette.refresh(canvas, settings.highlightChanges);
+            palette.refresh(canvas, config.highlightChanges);
             applyChrome();
             canvas.redraw();
         }
@@ -247,7 +247,7 @@ public class DiagramController {
     }
 
     public void setShowStatics(boolean show) {
-        settings.showStatics = show;
+        config.showStatics = show;
         if (snapshot != null) {
             rebuild();
         }
@@ -318,7 +318,7 @@ public class DiagramController {
         int canvasScrollX = canvas.getViewport().getViewLocation().x;
         canvas.setRedraw(false);
         try {
-            palette.refresh(canvas, settings.highlightChanges);
+            palette.refresh(canvas, config.highlightChanges);
             applyChrome();
             discardFigures();
             if (snapshot == null) {
@@ -360,8 +360,8 @@ public class DiagramController {
     }
 
     private void applyChrome() {
-        stack.restyle(palette, fonts);
-        heap.restyle(palette, fonts);
+        stack.restyle(config);
+        heap.restyle(config);
         sash.setLineColor(palette.boxBorder());
     }
 
@@ -377,7 +377,7 @@ public class DiagramController {
             String frameToken = frame.id();
             // Every frame builds its rows eagerly; only user-collapsed frames stay shut.
             boolean expanded = !expansion.isFrameCollapsed(frameToken);
-            ContainerFigure figure = new ContainerFigure(frame.label(), expanded, palette, fonts, () -> {
+            ContainerFigure figure = new ContainerFigure(frame.label(), expanded, config, () -> {
                 expansion.setFrameCollapsed(frameToken, expanded);
                 rebuild();
             });
@@ -397,7 +397,7 @@ public class DiagramController {
         }
         List<DisplayableVariable> variables = frame.variables(); // this first, then locals
         List<String> rowKeys = MemoryDiff.rowKeys(variables); // same keying as the differ
-        renderCapped("frame:" + frameToken, variables.size(), settings.maxLocalsPerFrameRendered, i -> {
+        renderCapped("frame:" + frameToken, variables.size(), config.maxLocalsPerFrameRendered, i -> {
             DisplayableVariable variable = variables.get(i);
             ChangeStatus status = palette.effective(diff.statusOf(frameToken, rowKeys.get(i)));
             return newRow(variable, status, refs, true);
@@ -421,7 +421,7 @@ public class DiagramController {
                 visible.add(struct.id());
             }
         }
-        int heapCap = expansion.capOf(CAP_KEY_HEAP, settings.maxHeapObjectsRendered);
+        int heapCap = expansion.capOf(CAP_KEY_HEAP, config.maxHeapObjectsRendered);
         int shown = Math.min(visible.size(), heapCap);
         Set<String> rendered = new HashSet<>(visible.subList(0, shown));
         int omitted = visible.size() - shown;
@@ -452,13 +452,13 @@ public class DiagramController {
 
     /** A box is hidden only when it is a statics class and the statics toggle is off. */
     private boolean isVisibleStruct(String token) {
-        return settings.showStatics || !token.startsWith(STATICS_TOKEN_PREFIX);
+        return config.showStatics || !token.startsWith(STATICS_TOKEN_PREFIX);
     }
 
     private HeapObjectFigure buildObjectFigure(DisplayableStruct struct, List<PendingRef> refs) {
         String token = struct.id();
         boolean collapsed = expansion.isObjectCollapsed(token);
-        HeapObjectFigure figure = new HeapObjectFigure(struct.type(), collapsed, palette, fonts,
+        HeapObjectFigure figure = new HeapObjectFigure(struct.type(), collapsed, config,
                 () -> {
                     expansion.setObjectCollapsed(token, !collapsed);
                     rebuild();
@@ -503,13 +503,13 @@ public class DiagramController {
      */
     private int fieldCapFor(String token) {
         if (token.startsWith(STATICS_TOKEN_PREFIX)) {
-            return settings.maxFieldsPerObjectRendered;
+            return config.maxFieldsPerObjectRendered;
         }
         DisplayableStruct struct = byId.get(token);
         if (struct != null && !struct.variables().isEmpty() && "0".equals(struct.variables().get(0).label())) {
-            return settings.maxArrayElementsRendered;
+            return config.maxArrayElementsRendered;
         }
-        return settings.maxFieldsPerObjectRendered;
+        return config.maxFieldsPerObjectRendered;
     }
 
     private IFigure unrenderedBox(int omitted) {
@@ -520,7 +520,7 @@ public class DiagramController {
         box.setOpaque(true);
         box.setBackgroundColor(palette.boxBackground());
         box.setBorder(new org.eclipse.draw2d.LineBorder(palette.boxBorder(), 1));
-        box.add(new MoreRowFigure("+ " + omitted + " objects not rendered…", palette, fonts, () -> {
+        box.add(new MoreRowFigure("+ " + omitted + " objects not rendered…", config, () -> {
             expansion.raiseCap(CAP_KEY_HEAP);
             rebuild();
         }));
@@ -545,7 +545,7 @@ public class DiagramController {
         // with no declared type. Its label is the content shown in the box (no label,
         // no arrow), mirroring the old enum-constant/boxed row.
         if (variable.type() == null) {
-            VariableRowFigure row = new VariableRowFigure(null, variable.label(), null, status, palette, fonts);
+            VariableRowFigure row = new VariableRowFigure(null, variable.label(), null, status, config);
             hover.hookRow(row);
             return row;
         }
@@ -557,7 +557,7 @@ public class DiagramController {
             }
             String targetToken = target.get().id();
             VariableRowFigure row = new VariableRowFigure(variable.label(), "", targetToken, status,
-                    palette, fonts);
+                    config);
             hover.hookRow(row); // reference rows add click/preview/target outline
             refs.add(new PendingRef(row, targetToken, status, fromStack));
             return row;
@@ -565,7 +565,7 @@ public class DiagramController {
 
         // Box value ("null" included): the text fills the cell, no arrow.
         VariableRowFigure row = new VariableRowFigure(variable.label(), boxTextOf(value), null, status,
-                palette, fonts);
+                config);
         hover.hookRow(row); // every row hover-tints
         row.setToolTip(tooltipLabel(typedTooltip(variable.type(), Ellipsis.fullValueText(value))));
         return row;
@@ -577,7 +577,7 @@ public class DiagramController {
      * "null" text (unlike a null cell) — so all three read differently.
      */
     private VariableRowFigure danglingRow(DisplayableVariable variable, ChangeStatus status) {
-        VariableRowFigure row = new VariableRowFigure(variable.label(), "⇥⌀", null, status, palette, fonts);
+        VariableRowFigure row = new VariableRowFigure(variable.label(), "⇥⌀", null, status, config);
         hover.hookRow(row);
         row.setToolTip(tooltipLabel(typedTooltip(variable.type(), "dangling reference (no target)")));
         return row;
@@ -586,7 +586,7 @@ public class DiagramController {
     /** In-box text: box values verbatim (char-capped), else empty (reference cell). */
     private String boxTextOf(Value value) {
         if (value instanceof Value.BoxValue) {
-            return Ellipsis.valueText(value, settings.maxValueChars);
+            return Ellipsis.valueText(value, config.maxValueChars);
         }
         return ""; // Reference: an empty cell (the arrow tail sits inside it)
     }
@@ -611,14 +611,14 @@ public class DiagramController {
     }
 
     private MoreRowFigure moreRow(int hidden, String capKey) {
-        return new MoreRowFigure("+ " + hidden + " more…", palette, fonts, () -> {
+        return new MoreRowFigure("+ " + hidden + " more…", config, () -> {
             expansion.raiseCap(capKey);
             rebuild();
         });
     }
 
     private Label infoRow(String text) {
-        return MoreRowFigure.mutedRow(text, palette, fonts);
+        return MoreRowFigure.mutedRow(text, config);
     }
 
     private Label tooltipLabel(String text) {
@@ -641,7 +641,7 @@ public class DiagramController {
             // Round-robin lanes for cross-pane edges, assigned in build order (bottom
             // of stack first), so parallel curves spread across the gutter.
             int lane = ref.fromStack() ? laneCounter++ % MemoryConnectionRouter.LANES : 0;
-            StateConnection connection = new StateConnection(ref.status(), lane, palette);
+            StateConnection connection = new StateConnection(ref.status(), lane, config);
             connection.setSourceAnchor(new RowEdgeAnchor(ref.row().valueBox(), Rectangle::getCenter));
             // Cross-pane arrows land on the row's LEFT edge (facing the gutter);
             // same-viewport ones (heap sources) land on its RIGHT edge, matching
@@ -656,8 +656,8 @@ public class DiagramController {
 
     // ---------------------------------------------------- hover/reveal support
 
-    ColorPalette palette() {
-        return palette;
+    PluginConfig config() {
+        return config;
     }
 
     StateConnection connectionFor(VariableRowFigure row) {
@@ -679,7 +679,7 @@ public class DiagramController {
             return null;
         }
         DisplayableStruct struct = byId.get(row.targetToken());
-        return struct == null ? null : new ObjectPreviewFigure(struct, palette, fonts);
+        return struct == null ? null : new ObjectPreviewFigure(struct, config);
     }
 
     /** Click-to-reveal: scroll the heap pane to the target and flash its outline. */

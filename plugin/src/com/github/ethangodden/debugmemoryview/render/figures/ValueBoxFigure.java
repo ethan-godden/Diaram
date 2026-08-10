@@ -10,6 +10,7 @@ import org.eclipse.jdt.annotation.Nullable;
 import com.github.ethangodden.debugmemoryview.model.diff.ChangeStatus;
 import com.github.ethangodden.debugmemoryview.render.ColorPalette;
 import com.github.ethangodden.debugmemoryview.render.FontKit;
+import com.github.ethangodden.debugmemoryview.render.PluginConfig;
 
 /**
  * The literal value cell of a variable row: a 1 px palette-border box holding
@@ -27,8 +28,10 @@ public class ValueBoxFigure extends Label {
 
     public static final int MIN_WIDTH = 40;
 
-    public ValueBoxFigure(@Nullable String text, ChangeStatus status, ColorPalette palette, FontKit fonts) {
+    public ValueBoxFigure(@Nullable String text, ChangeStatus status, PluginConfig config) {
         super(text == null ? "" : text);
+        ColorPalette palette = config.palette();
+        FontKit fonts = config.fonts();
         setLabelAlignment(PositionConstants.CENTER);
         setFont(fonts.name());
         setForegroundColor(palette.statusForeground(status));

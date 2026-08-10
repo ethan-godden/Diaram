@@ -104,11 +104,11 @@ Packages below sit under the root `com.github.ethangodden.debugmemoryview`.
   listeners), `SnapshotPipeline` (debounce, per-thread baselines, suspend
   generations, publish gating), `core.extract.SnapshotExtractor` (the JDI walk, the JDT→builder
   adapter that feeds `MemorySnapshot.Builder`; stub-first BFS with caps from `ExtractionLimits`).
-- `render` — pure layout (`HeapLayouter` + sticky `LayoutMemory`),
-  theming (`ColorPalette`, `FontKit`), figures (`render.figures`), bezier
+- `render` — pure layout (`HeapLayouter` + sticky `LayoutMemory`), theming and
+  per-view settings (`PluginConfig`, bundling `ColorPalette`, `FontKit`, and
+  the memento-persisted render settings), figures (`render.figures`), bezier
   connection routing/clipping, hover/reveal, `ExpansionMemory` (cap overrides).
-- `ui` — the ViewPart, preference page/initializer, `ViewSettings`
-  (memento-persisted per-view state).
+- `ui` — the ViewPart, preference page/initializer.
 
 ## Hard rules (enforced by review, checked by the layering of imports)
 

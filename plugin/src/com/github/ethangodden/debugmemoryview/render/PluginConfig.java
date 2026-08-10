@@ -1,10 +1,18 @@
-package com.github.ethangodden.debugmemoryview.ui;
+package com.github.ethangodden.debugmemoryview.render;
 
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.jface.resource.ResourceManager;
 import org.eclipse.ui.IMemento;
 
-/** Per-view render settings, persisted via the view memento. */
-public final class ViewSettings {
+/**
+ * Per-view render settings (persisted via the view memento) plus the SWT/JFace
+ * theming resources ({@link ColorPalette}, {@link FontKit}) they configure.
+ * Constructable with a no-arg constructor before the canvas exists (so
+ * {@link #restore} can run from {@code IViewPart#init}); {@link #initRenderResources}
+ * must run exactly once, after the canvas's {@link ResourceManager} exists,
+ * before {@link #palette()}/{@link #fonts()} are used.
+ */
+public final class PluginConfig {
 
     public int maxHeapObjectsRendered = 200;
     public int maxFieldsPerObjectRendered = 16;
@@ -13,6 +21,32 @@ public final class ViewSettings {
     public int maxValueChars = 60;
     public boolean showStatics = true;
     public boolean highlightChanges = true;
+
+    private @Nullable ColorPalette palette;
+    private @Nullable FontKit fonts;
+
+    /** Must be called exactly once, after the canvas's ResourceManager exists. */
+    public void initRenderResources(ResourceManager resources) {
+        if (palette != null) {
+            throw new IllegalStateException("initRenderResources() already called"); //$NON-NLS-1$
+        }
+        palette = new ColorPalette(resources);
+        fonts = new FontKit(resources);
+    }
+
+    public ColorPalette palette() {
+        if (palette == null) {
+            throw new IllegalStateException("initRenderResources() not called yet"); //$NON-NLS-1$
+        }
+        return palette;
+    }
+
+    public FontKit fonts() {
+        if (fonts == null) {
+            throw new IllegalStateException("initRenderResources() not called yet"); //$NON-NLS-1$
+        }
+        return fonts;
+    }
 
     public void save(IMemento memento) {
         memento.putInteger("maxHeapObjects", maxHeapObjectsRendered);

@@ -37,9 +37,9 @@ public class StateConnection extends PolylineConnection {
     private Point curveC1;
     private Point curveC2;
 
-    public StateConnection(ChangeStatus sourceStatus, int laneIndex, ColorPalette palette) {
+    public StateConnection(ChangeStatus sourceStatus, int laneIndex, PluginConfig config) {
         this.laneIndex = laneIndex;
-        baseColor = palette.connectionColor(sourceStatus);
+        baseColor = config.palette().connectionColor(sourceStatus);
         setForegroundColor(baseColor);
         setLineWidth(1);
         PolygonDecoration arrowhead = new PolygonDecoration(); // filled TRIANGLE_TIP, inherits color
@@ -59,9 +59,9 @@ public class StateConnection extends PolylineConnection {
         this.curveC2 = c2;
     }
 
-    public void setHover(boolean on, ColorPalette palette) {
+    public void setHover(boolean on, PluginConfig config) {
         setLineWidth(on ? 2 : 1);
-        setForegroundColor(on ? palette.hoverAccent() : baseColor);
+        setForegroundColor(on ? config.palette().hoverAccent() : baseColor);
     }
 
     public boolean bothEndpointsVisible() {
