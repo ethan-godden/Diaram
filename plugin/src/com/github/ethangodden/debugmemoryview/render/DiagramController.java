@@ -39,7 +39,6 @@ import com.github.ethangodden.debugmemoryview.model.MemorySnapshot.Value;
 import com.github.ethangodden.debugmemoryview.model.diff.ChangeStatus;
 import com.github.ethangodden.debugmemoryview.model.diff.DiffEngine;
 import com.github.ethangodden.debugmemoryview.model.diff.MemoryDiff;
-import com.github.ethangodden.debugmemoryview.render.figures.ColumnFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.ContainerFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.HeapObjectFigure;
 import com.github.ethangodden.debugmemoryview.render.figures.MoreRowFigure;
@@ -84,12 +83,8 @@ public class DiagramController {
     private final ColumnsLayout columnsLayout;
     private final ConnectionLayer connectionLayer;
     private final RunningOverlay overlay;
-    private final ColumnFigure stackColumn;
-    private final ColumnFigure heapColumn;
-    private final ScrollPane stackPane;
-    private final ScrollPane heapPane;
-    private final Figure stackContents;
-    private final Figure heapContents;
+    private final DiagramColumn stack;
+    private final DiagramColumn heap;
     private final SashFigure sash;
 
     private final ScrollThumbOverlay scrollThumbs;
@@ -127,46 +122,30 @@ public class DiagramController {
         canvas.getViewport().setContentsTracksWidth(true);
         canvas.getViewport().setContentsTracksHeight(true);
 
-        stackContents = newVerticalContents(8);
-        stackPane = new ScrollPane();
-        // No stock bars anywhere: ScrollThumbOverlay paints auto-hiding thumbs instead.
-        // Scrolling itself (wheel routing, RangeModels, reveal) never touches the bar figures.
-        stackPane.setScrollBarVisibility(ScrollPane.NEVER);
-        // Contents track the viewport width: a narrowing column SHRINKS each frame
-        // to min(natural, available) — headers/identifiers ellipsize, value boxes
-        // survive — instead of clipping at the pane edge. Below the figures'
-        // box-preserving minimums the contents overflow again, so the horizontal
-        // thumb + Shift+wheel stay wired (dormant until that extreme).
-        stackPane.getViewport().setContentsTracksWidth(true);
-        stackPane.setContents(stackContents);
-        stackColumn = new ColumnFigure("Stack", stackPane, palette, fonts);
+        stack = new DiagramColumn("Stack", 8, palette, fonts);
 
-        heapContents = newVerticalContents(12);
+        heap = new DiagramColumn("Heap", 12, palette, fonts);
         // Boxes sit flush LEFT; the intra-heap arcs bow on the RIGHT, so reserve
         // their bow width there: same-viewport connections clip to the pane's
         // client area, so the arcs must bow within the contents, not the gutter.
-        heapContents.setBorder(new MarginBorder(8, 8, 8, 8 + MemoryConnectionRouter.BOW_MAX));
-        heapPane = new ScrollPane();
-        heapPane.setScrollBarVisibility(ScrollPane.NEVER);
-        heapPane.getViewport().setContentsTracksWidth(true); // same responsive shrink as the stack
-        heapPane.setContents(heapContents);
-        heapColumn = new ColumnFigure("Heap", heapPane, palette, fonts);
+        heap.contents().setBorder(new MarginBorder(8, 8, 8, 8 + MemoryConnectionRouter.BOW_MAX));
 
         sash = new SashFigure();
 
         columnsLayer = new Layer();
-        columnsLayout = new ColumnsLayout(stackColumn, sash, heapColumn, stackContents, heapContents);
+        columnsLayout = new ColumnsLayout(stack.column(), sash, heap.column(), stack.contents(), heap.contents());
         columnsLayer.setLayoutManager(columnsLayout);
-        columnsLayer.add(stackColumn);
+        columnsLayer.add(stack.column());
         columnsLayer.add(sash);
-        columnsLayer.add(heapColumn);
+        columnsLayer.add(heap.column());
 
         connectionLayer = new ConnectionLayer();
         connectionLayer.setEnabled(false); // transparent to mouse events; hover reaches the rows below
         connectionLayer.setAntialias(SWT.ON);
         connectionLayer.setConnectionRouter(
                 new MemoryConnectionRouter(this::gutterAbsolute, this::heapArcBaseline));
-        connectionLayer.setClippingStrategy(new MemoryClippingStrategy(stackPane, heapPane, this::gutterAbsolute));
+        connectionLayer.setClippingStrategy(
+                new MemoryClippingStrategy(stack.pane(), heap.pane(), this::gutterAbsolute));
         connectionLayer.setMinimumSize(new Dimension(0, 0));
         connectionLayer.setPreferredSize(new Dimension(0, 0));
 
@@ -192,8 +171,8 @@ public class DiagramController {
         // Vertical thumbs are per-column (each pane scrolls its own contents);
         // the single horizontal thumb rides the outer canvas viewport, which is
         // what scrolls the whole diagram sideways.
-        scrollThumbs.track(stackPane.getViewport(), true);
-        scrollThumbs.track(heapPane.getViewport(), true);
+        scrollThumbs.track(stack.pane().getViewport(), true);
+        scrollThumbs.track(heap.pane().getViewport(), true);
         scrollThumbs.track(canvas.getViewport(), false);
 
         hover = new HoverController(this);
@@ -224,7 +203,7 @@ public class DiagramController {
         diff = null;
         hover.reset();
         discardFigures();
-        stackColumn.header().setText("Stack");
+        stack.column().header().setText("Stack");
         canvas.redraw();
     }
 
@@ -334,8 +313,8 @@ public class DiagramController {
 
     private void rebuild() {
         hover.reset();
-        Point stackScroll = stackPane.getViewport().getViewLocation().getCopy();
-        Point heapScroll = heapPane.getViewport().getViewLocation().getCopy();
+        Point stackScroll = stack.saveScroll();
+        Point heapScroll = heap.saveScroll();
         int canvasScrollX = canvas.getViewport().getViewLocation().x;
         canvas.setRedraw(false);
         try {
@@ -345,7 +324,7 @@ public class DiagramController {
             if (snapshot == null) {
                 return;
             }
-            stackColumn.header().setText("Stack — " + threadNameOf(snapshot));
+            stack.column().header().setText("Stack — " + threadNameOf(snapshot));
             List<PendingRef> refs = new ArrayList<>();
             buildHeap(refs); // first: object figures must exist before arrows and stack tooltips
             buildStack(refs);
@@ -363,16 +342,16 @@ public class DiagramController {
             if (canvas.isDisposed()) {
                 return;
             }
-            stackPane.getViewport().setViewLocation(stackScroll);
-            heapPane.getViewport().setViewLocation(heapScroll);
+            stack.restoreScroll(stackScroll);
+            heap.restoreScroll(heapScroll);
             canvas.scrollToX(canvasScrollX);
         });
     }
 
     private void discardFigures() {
         scrollThumbs.reset(); // stale thumb geometry / timers must not outlive the figures
-        stackContents.removeAll();
-        heapContents.removeAll();
+        stack.discard();
+        heap.discard();
         connectionLayer.removeAll();
         objectFigures.clear();
         connectionsBySourceRow.clear();
@@ -381,8 +360,8 @@ public class DiagramController {
     }
 
     private void applyChrome() {
-        stackColumn.restyle(palette, fonts);
-        heapColumn.restyle(palette, fonts);
+        stack.restyle(palette, fonts);
+        heap.restyle(palette, fonts);
         sash.setLineColor(palette.boxBorder());
     }
 
@@ -405,7 +384,7 @@ public class DiagramController {
             if (expanded) {
                 populateFrame(figure, frame, refs);
             }
-            stackContents.add(figure);
+            stack.contents().add(figure);
         }
     }
 
@@ -468,7 +447,7 @@ public class DiagramController {
         if (omitted > 0) {
             heapBody.add(unrenderedBox(omitted));
         }
-        heapContents.add(heapBody);
+        heap.contents().add(heapBody);
     }
 
     /** A box is hidden only when it is a statics class and the statics toggle is off. */
@@ -713,9 +692,9 @@ public class DiagramController {
         if (target == null) {
             return;
         }
-        RevealUtil.reveal(heapPane, target); // vertical within the heap pane
+        RevealUtil.reveal(heap.pane(), target); // vertical within the heap pane
         RevealUtil.revealHorizontally(canvas.getViewport(), target); // bring the heap column into the window
-        scrollThumbs.show(heapPane.getViewport(), true);
+        scrollThumbs.show(heap.pane().getViewport(), true);
         scrollThumbs.show(canvas.getViewport(), false);
         target.setHoverHighlight(true);
         canvas.getDisplay().timerExec(FLASH_MILLIS, () -> {
@@ -740,10 +719,10 @@ public class DiagramController {
     }
 
     private Rectangle gutterAbsolute() {
-        Rectangle stackBounds = stackColumn.getBounds().getCopy();
-        Rectangle heapBounds = heapColumn.getBounds().getCopy();
-        stackColumn.translateToAbsolute(stackBounds);
-        heapColumn.translateToAbsolute(heapBounds); // sibling of stackColumn: same coordinate space
+        Rectangle stackBounds = stack.column().getBounds().getCopy();
+        Rectangle heapBounds = heap.column().getBounds().getCopy();
+        stack.column().translateToAbsolute(stackBounds);
+        heap.column().translateToAbsolute(heapBounds); // sibling of stack column: same coordinate space
         return new Rectangle(stackBounds.right(), stackBounds.y,
                 Math.max(0, heapBounds.x - stackBounds.right()), stackBounds.height);
     }
@@ -757,7 +736,7 @@ public class DiagramController {
      */
     private int heapArcBaseline(int topY, int bottomY) {
         int right = Integer.MIN_VALUE;
-        for (IFigure child : heapContents.getChildren()) {
+        for (IFigure child : heap.contents().getChildren()) {
             for (IFigure box : child.getChildren()) {
                 Rectangle bounds = box.getBounds().getCopy();
                 box.translateToAbsolute(bounds);
@@ -779,17 +758,7 @@ public class DiagramController {
                 }
             }
         }
-        return x < gutterAbsolute().getCenter().x ? stackPane : heapPane;
-    }
-
-    private static Figure newVerticalContents(int spacing) {
-        Figure contents = new Figure();
-        ToolbarLayout layout = new ToolbarLayout(false);
-        layout.setSpacing(spacing);
-        layout.setStretchMinorAxis(false); // frames / heap boxes hug their content width
-        contents.setLayoutManager(layout);
-        contents.setBorder(new MarginBorder(8));
-        return contents;
+        return x < gutterAbsolute().getCenter().x ? stack.pane() : heap.pane();
     }
 
     /** Translucent veil + centered "Running…" label; toggled by setRunning. */
