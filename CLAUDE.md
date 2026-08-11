@@ -22,7 +22,14 @@ removals are not tracked).
   They stay JDK-only, except `ColumnsLayoutTest` which drives bare Draw2d figures (nothing
   paints).
 - `targetplatform/` — the Tycho target definition (`targetplatform.target`) pinning the
-  p2 release train `https://download.eclipse.org/releases/2026-06`.
+  p2 release train `https://download.eclipse.org/releases/2026-06`. Alongside it,
+  `full-ide.target` is an **IDE-only** target (the whole `org.eclipse.sdk.ide` product)
+  for launching the Eclipse Application with a usable workbench — themes, key bindings,
+  the macOS cocoa renderer. The build never sees it: Tycho resolves the target artifact
+  by module artifactId, so a second `.target` in the module is ignored as long as one is
+  named `targetplatform.target`. Pick either in Preferences > Plug-in Development >
+  Target Platform; verify against the lean one (`mvn -f parent clean verify`) before
+  pushing, since the SDK lets the IDE compile against bundles the real target lacks.
 - `feature/`, `repository/` — the `eclipse-feature` and the `eclipse-repository` p2 update
   site (`category.xml`, emitted to `repository/target/repository/` and archived to
   `repository/target/repository-<version>.zip`). Distribution is that zip: users install it
