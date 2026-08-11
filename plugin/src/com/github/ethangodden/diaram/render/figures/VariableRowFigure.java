@@ -90,6 +90,16 @@ public class VariableRowFigure extends Figure {
         return new RowEdgeAnchor(valueBox, Rectangle::getCenter);
     }
 
+    /**
+     * Anchor for an inbound arrow landing on this row. The row spans the full
+     * container width (leftover width lands left of the identifier), so its
+     * LEFT and RIGHT edges sit exactly on the container's inner border —
+     * {@code fromLeft} picks which one the arrowhead touches.
+     */
+    public ConnectionAnchor targetAnchor(boolean fromLeft) {
+        return new RowEdgeAnchor(this, fromLeft ? Rectangle::getLeft : Rectangle::getRight);
+    }
+
     public void setHoverHighlight(boolean hover, PluginConfig config) {
         if (hover) {
             setOpaque(true);

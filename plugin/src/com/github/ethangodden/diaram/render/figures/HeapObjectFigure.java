@@ -31,30 +31,21 @@ public class HeapObjectFigure extends ContainerFigure {
     }
 
     /**
-     * Anchor for an inbound reference arrow, landing on the near edge of the
-     * reference-target row: {@code fromLeft} picks the LEFT edge (cross-pane
+     * Anchor for an inbound reference arrow: it lands on the near edge of the
+     * first variable row (first field / array element / STRING char cell / BOXED
+     * content row) — a pointer to the start of the allocation — falling back to
+     * the header when there are no such rows (STUB, empty object,
+     * user-collapsed box). {@code fromLeft} picks the LEFT edge (cross-pane
      * arrows from the stack, facing the gutter) or the RIGHT edge (intra-heap
      * arcs, matching the router's right-side bows).
      */
     public ConnectionAnchor targetAnchor(boolean fromLeft) {
-        return new RowEdgeAnchor(referenceTargetFigure(), fromLeft ? Rectangle::getLeft : Rectangle::getRight);
-    }
-
-    /**
-     * Where reference arrowheads land: the first variable row of the body (first
-     * field / array element / STRING char cell / BOXED content row) — a pointer to the start
-     * of the allocation. Falls back to the header when there are no such rows
-     * (STUB, empty object, user-collapsed box).
-     */
-    private IFigure referenceTargetFigure() {
-        if (body.getParent() == this) {
-            for (IFigure child : body.getChildren()) {
-                if (child instanceof VariableRowFigure row) {
-                    return row;
-                }
+        for (IFigure child : getChildren()) {
+            if (child instanceof VariableRowFigure row) {
+                return row.targetAnchor(fromLeft);
             }
         }
-        return header;
+        return new RowEdgeAnchor(header, fromLeft ? Rectangle::getLeft : Rectangle::getRight);
     }
 
     public void setHoverHighlight(boolean on) {

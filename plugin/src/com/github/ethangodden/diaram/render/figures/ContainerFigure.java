@@ -19,10 +19,12 @@ import com.github.ethangodden.diaram.render.PluginConfig;
 
 /**
  * A variable container: an opaque, bordered box with a collapsible "▾/▸ title"
- * header and a body of variable rows. Stack frames are exactly this; heap
- * objects and arrays extend it ({@link HeapObjectFigure}) with hover /
- * width-clamp behaviour. Containers carry no change status — only variable
- * rows do.
+ * header directly followed by variable rows — nothing more than a vertical
+ * layout the controller adds rows into (a collapsed container simply gets no
+ * rows; rebuild is the universal update primitive). Stack frames are exactly
+ * this; heap objects and arrays extend it ({@link HeapObjectFigure}) with
+ * hover / width-clamp / arrow-anchor behaviour. Containers carry no change
+ * status — only variable rows do.
  *
  * The border sits FLUSH against the rows — no inner margin — so a row's
  * value box touches the container border, matching a stack frame. Single left-
@@ -32,7 +34,6 @@ public class ContainerFigure extends Figure {
 
     protected final PluginConfig config;
     protected final Label header;
-    protected final Figure body;
 
     public ContainerFigure(String title, boolean expanded,
             PluginConfig config, @Nullable Runnable onToggle) {
@@ -48,19 +49,12 @@ public class ContainerFigure extends Figure {
         header = collapsibleHeader(title, expanded, config);
         add(header);
 
-        body = new Figure();
-        ToolbarLayout bodyLayout = new ToolbarLayout(false);
-        bodyLayout.setStretchMinorAxis(true);
-        body.setLayoutManager(bodyLayout);
-        if (expanded) {
-            add(body);
-        }
-
         attachToggle(header, onToggle);
     }
 
+    /** Rows stack directly under the header with zero spacing — contiguous memory cells. */
     public void addRow(IFigure row) {
-        body.add(row);
+        add(row);
     }
 
     /**
