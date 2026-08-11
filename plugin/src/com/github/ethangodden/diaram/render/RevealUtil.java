@@ -2,12 +2,12 @@ package com.github.ethangodden.diaram.render;
 
 import org.eclipse.draw2d.ConnectionAnchor;
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.draw2d.ScrollPane;
 import org.eclipse.draw2d.Viewport;
 import org.eclipse.draw2d.ViewportUtilities;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
+import org.eclipse.jdt.annotation.Nullable;
 
 /** Scroll-a-figure-into-view and viewport visibility helpers (all absolute coordinates). */
 public final class RevealUtil {

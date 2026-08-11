@@ -11,7 +11,6 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
 import org.apache.commons.lang3.StringUtils;
-import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.draw2d.ConnectionLayer;
 import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.FigureCanvas;
@@ -27,6 +26,7 @@ import org.eclipse.draw2d.ToolbarLayout;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
+import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.resource.ResourceManager;
 import org.eclipse.swt.SWT;
 
