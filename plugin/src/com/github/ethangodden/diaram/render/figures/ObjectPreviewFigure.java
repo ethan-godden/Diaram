@@ -12,7 +12,6 @@ import org.eclipse.draw2d.ToolbarLayout;
 
 import com.github.ethangodden.diaram.model.MemorySnapshot.DisplayableStruct;
 import com.github.ethangodden.diaram.model.MemorySnapshot.DisplayableVariable;
-import com.github.ethangodden.diaram.model.MemorySnapshot.Value;
 import com.github.ethangodden.diaram.render.ColorPalette;
 import com.github.ethangodden.diaram.render.Ellipsis;
 import com.github.ethangodden.diaram.render.FontKit;
