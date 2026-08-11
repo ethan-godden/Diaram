@@ -29,6 +29,7 @@ import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jface.resource.ResourceManager;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Color;
 
 import com.github.ethangodden.diaram.model.MemorySnapshot;
 import com.github.ethangodden.diaram.model.MemorySnapshot.DisplayableFrame;
@@ -48,10 +49,11 @@ import com.github.ethangodden.diaram.render.figures.VariableRowFigure;
 /**
  * Owns the whole Draw2d figure tree of the memory diagram and orchestrates the
  * full rebuild per snapshot (the universal update primitive). One FigureCanvas;
- * a LayeredPane with a "columns" layer (stack | gutter+sash | heap, each column
- * an independent ScrollPane), a mouse-transparent ConnectionLayer on top, and a
- * scroll-thumb overlay layer above that (auto-hiding scrollbars, see
- * {@link ScrollThumbOverlay}).
+ * a LayeredPane with a "columns" layer (stack | gutter | heap, each column an
+ * independent ScrollPane; the layer itself paints the fixed divider line
+ * centered in the gutter, see {@link ColumnsLayer}), a mouse-transparent
+ * ConnectionLayer on top, and a scroll-thumb overlay layer above that
+ * (auto-hiding scrollbars, see {@link ScrollThumbOverlay}).
  * Connections re-route on scroll purely via the stock anchor mechanism: the
  * pane contents figure physically moves, figureMoved fires up the tree, and
  * every AbstractConnectionAnchor re-fires — no manual re-anchoring anywhere.
@@ -78,13 +80,12 @@ public class DiagramController {
     private final FontKit fonts;
 
     private final LayeredPane rootPane;
-    private final Layer columnsLayer;
+    private final ColumnsLayer columnsLayer;
     private final ColumnsLayout columnsLayout;
     private final ConnectionLayer connectionLayer;
     private final RunningOverlay overlay;
     private final DiagramColumn stack;
     private final DiagramColumn heap;
-    private final SashFigure sash;
 
     private final ScrollThumbOverlay scrollThumbs;
 
@@ -130,13 +131,10 @@ public class DiagramController {
         // client area, so the arcs must bow within the contents, not the gutter.
         heap.contents().setBorder(new MarginBorder(8, 8, 8, 8 + MemoryConnectionRouter.BOW_MAX));
 
-        sash = new SashFigure();
-
-        columnsLayer = new Layer();
-        columnsLayout = new ColumnsLayout(stack.column(), sash, heap.column(), stack.contents(), heap.contents());
+        columnsLayer = new ColumnsLayer();
+        columnsLayout = new ColumnsLayout(stack.column(), heap.column(), stack.contents(), heap.contents());
         columnsLayer.setLayoutManager(columnsLayout);
         columnsLayer.add(stack.column());
-        columnsLayer.add(sash);
         columnsLayer.add(heap.column());
 
         connectionLayer = new ConnectionLayer();
@@ -362,7 +360,7 @@ public class DiagramController {
     private void applyChrome() {
         stack.restyle(config);
         heap.restyle(config);
-        sash.setLineColor(palette.boxBorder());
+        columnsLayer.setLineColor(palette.boxBorder());
     }
 
     // ------------------------------------------------------------------ stack
@@ -759,6 +757,37 @@ public class DiagramController {
             }
         }
         return x < gutterAbsolute().getCenter().x ? stack.pane() : heap.pane();
+    }
+
+    /**
+     * The "columns" layer: parent of the stack and heap columns, and also the
+     * painter of the fixed divider line centered between them. The columns are
+     * content-driven (see {@link ColumnsLayout}), so there is no ratio to drag —
+     * the line is a plain visual marker of the stack/heap boundary, positioned
+     * from the columns' current bounds rather than tracked as its own figure.
+     */
+    private final class ColumnsLayer extends Layer {
+
+        private static final int DIVIDER_WIDTH = 6;
+
+        private @Nullable Color lineColor;
+
+        void setLineColor(@Nullable Color lineColor) {
+            this.lineColor = lineColor;
+            repaint();
+        }
+
+        @Override
+        protected void paintFigure(Graphics graphics) {
+            if (lineColor == null) {
+                return;
+            }
+            Rectangle stackBounds = stack.column().getBounds();
+            Rectangle heapBounds = heap.column().getBounds();
+            int centerX = (stackBounds.right() + heapBounds.x) / 2;
+            graphics.setBackgroundColor(lineColor);
+            graphics.fillRectangle(centerX - DIVIDER_WIDTH / 2, stackBounds.y, DIVIDER_WIDTH, stackBounds.height);
+        }
     }
 
     /** Translucent veil + centered "Running…" label; toggled by setRunning. */

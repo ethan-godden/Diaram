@@ -6,7 +6,7 @@ import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Rectangle;
 
 /**
- * Splits the columns layer into stack | center gutter (a fixed divider) | heap.
+ * Splits the columns layer into stack | center gutter | heap.
  *
  * The stack column always takes its natural (guarded) content width; everything
  * to its right is the gutter plus the heap column, and the heap column carries
@@ -30,9 +30,8 @@ import org.eclipse.draw2d.geometry.Rectangle;
 public class ColumnsLayout extends AbstractLayout {
 
     public static final int GUTTER = 96;
-    /** The gutter never shrinks below this: room for the 6 px divider plus a thin arrow lane. */
+    /** The gutter never shrinks below this: room for the divider line plus a thin arrow lane. */
     public static final int MIN_GUTTER = 16;
-    public static final int SASH_WIDTH = 6;
 
     // Past this a stack frame's boxes ellipsize rather than widening the scroll
     // region without bound — keeps one very wide frame from dominating the view.
@@ -40,15 +39,13 @@ public class ColumnsLayout extends AbstractLayout {
     private static final int MIN_HEIGHT = 120;
 
     private final IFigure stackColumn;
-    private final IFigure sash;
     private final IFigure heapColumn;
     private final IFigure stackContents;
     private final IFigure heapContents;
 
-    public ColumnsLayout(IFigure stackColumn, IFigure sash, IFigure heapColumn,
+    public ColumnsLayout(IFigure stackColumn, IFigure heapColumn,
             IFigure stackContents, IFigure heapContents) {
         this.stackColumn = stackColumn;
-        this.sash = sash;
         this.heapColumn = heapColumn;
         this.stackContents = stackContents;
         this.heapContents = heapContents;
@@ -77,8 +74,6 @@ public class ColumnsLayout extends AbstractLayout {
         int gutter = Math.clamp((long) area.width - stackWidth - heapNeed, MIN_GUTTER, GUTTER);
 
         stackColumn.setBounds(new Rectangle(area.x, area.y, stackWidth, area.height));
-        sash.setBounds(new Rectangle(area.x + stackWidth + (gutter - SASH_WIDTH) / 2, area.y,
-                SASH_WIDTH, area.height));
         heapColumn.setBounds(new Rectangle(area.x + stackWidth + gutter, area.y,
                 Math.max(0, area.width - stackWidth - gutter), area.height));
     }

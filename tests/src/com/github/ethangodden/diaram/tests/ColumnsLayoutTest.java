@@ -29,13 +29,12 @@ public class ColumnsLayoutTest {
     /** A {@link ColumnsLayout} wired to bare Draw2d figures; nothing paints. */
     private static final class Fixture {
         final IFigure stackColumn = new Figure();
-        final IFigure sash = new Figure();
         final IFigure heapColumn = new Figure();
         final IFigure stackContents = new Figure();
         final IFigure heapContents = new Figure();
         final IFigure container = new Figure();
         final ColumnsLayout layout =
-                new ColumnsLayout(stackColumn, sash, heapColumn, stackContents, heapContents);
+                new ColumnsLayout(stackColumn, heapColumn, stackContents, heapContents);
 
         Fixture(int stackNatural, int heapNatural) {
             stackContents.setPreferredSize(new Dimension(stackNatural, 100));
@@ -114,18 +113,5 @@ public class ColumnsLayoutTest {
                 "guard: over-wide stack is capped at MAX_PROTECTED_WIDTH in the min width");
         t.layoutAt(1200);
         assertEquals(MAX_PROTECTED_WIDTH, b(t.stackColumn).width, "guard: stack column never exceeds the guard width");
-    }
-
-    /** The divider is centered in the gutter, between the two columns. */
-    @Test
-    void testSashCentersInGutter() {
-        Fixture t = new Fixture(200, 300);
-        t.layoutAt(800);
-        assertEquals(ColumnsLayout.SASH_WIDTH, b(t.sash).width, "sash: fixed narrow width");
-        int sashCenter = b(t.sash).x + b(t.sash).width / 2;
-        int gutterCenter = b(t.stackColumn).right() + t.gutter() / 2;
-        assertEquals(gutterCenter, sashCenter, "sash: centered in the gutter");
-        assertTrue(b(t.sash).x >= b(t.stackColumn).right() && b(t.sash).right() <= b(t.heapColumn).x,
-                "sash: sits between the columns");
     }
 }
