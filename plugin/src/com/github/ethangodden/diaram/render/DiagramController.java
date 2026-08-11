@@ -12,6 +12,7 @@ import java.util.function.IntFunction;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.draw2d.ConnectionLayer;
+import org.eclipse.draw2d.Cursors;
 import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.FigureCanvas;
 import org.eclipse.draw2d.Graphics;
@@ -19,7 +20,9 @@ import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.Layer;
 import org.eclipse.draw2d.LayeredPane;
-import org.eclipse.draw2d.MarginBorder;
+import org.eclipse.draw2d.MouseEvent;
+import org.eclipse.draw2d.MouseListener;
+import org.eclipse.draw2d.MouseMotionListener;
 import org.eclipse.draw2d.ScrollPane;
 import org.eclipse.draw2d.TextUtilities;
 import org.eclipse.draw2d.ToolbarLayout;
@@ -91,7 +94,6 @@ public class DiagramController {
 
     private final LayoutMemory layoutMemory = new LayoutMemory();
     private final ExpansionMemory expansion = new ExpansionMemory();
-    private final HoverController hover;
 
     private final Map<String, HeapObjectFigure> objectFigures = new HashMap<>();
     private final Map<VariableRowFigure, StateConnection> connectionsBySourceRow = new HashMap<>();
@@ -100,6 +102,7 @@ public class DiagramController {
     private MemorySnapshot snapshot;
     private MemoryDiff diff;
     private int laneCounter;
+    private @Nullable Figure heapBody; // the heap's vertical box list; heapArcBaseline scans its children
 
     /** A reference row waiting for its arrow (created after all object figures exist). */
     private record PendingRef(VariableRowFigure row, String targetToken, ChangeStatus status, boolean fromStack) {
@@ -123,27 +126,27 @@ public class DiagramController {
         canvas.getViewport().setContentsTracksWidth(true);
         canvas.getViewport().setContentsTracksHeight(true);
 
-        stack = new DiagramColumn("Stack", 8, config);
+        stack = new DiagramColumn("Stack", 8, 8, config);
 
-        heap = new DiagramColumn("Heap", 12, config);
-        // Boxes sit flush LEFT; the intra-heap arcs bow on the RIGHT, so reserve
-        // their bow width there: same-viewport connections clip to the pane's
-        // client area, so the arcs must bow within the contents, not the gutter.
-        heap.contents().setBorder(new MarginBorder(8, 8, 8, 8 + MemoryConnectionRouter.BOW_MAX));
+        // Heap boxes sit flush LEFT; the intra-heap arcs bow on the RIGHT, so
+        // reserve their bow width there: same-viewport connections clip to the
+        // pane's client area, so the arcs must bow within the contents, not the
+        // gutter.
+        heap = new DiagramColumn("Heap", 12, 8 + StateConnection.Router.BOW_MAX, config);
 
         columnsLayer = new ColumnsLayer();
-        columnsLayout = new ColumnsLayout(stack.column(), heap.column(), stack.contents(), heap.contents());
+        columnsLayout = new ColumnsLayout(stack, heap, stack.contents(), heap.contents());
         columnsLayer.setLayoutManager(columnsLayout);
-        columnsLayer.add(stack.column());
-        columnsLayer.add(heap.column());
+        columnsLayer.add(stack);
+        columnsLayer.add(heap);
 
         connectionLayer = new ConnectionLayer();
         connectionLayer.setEnabled(false); // transparent to mouse events; hover reaches the rows below
         connectionLayer.setAntialias(SWT.ON);
         connectionLayer.setConnectionRouter(
-                new MemoryConnectionRouter(this::gutterAbsolute, this::heapArcBaseline));
+                new StateConnection.Router(this::gutterAbsolute, this::heapArcBaseline));
         connectionLayer.setClippingStrategy(
-                new MemoryClippingStrategy(stack.pane(), heap.pane(), this::gutterAbsolute));
+                new StateConnection.Clipping(stack.pane(), heap.pane(), this::gutterAbsolute));
         connectionLayer.setMinimumSize(new Dimension(0, 0));
         connectionLayer.setPreferredSize(new Dimension(0, 0));
 
@@ -154,18 +157,13 @@ public class DiagramController {
         overlay.setMinimumSize(new Dimension(0, 0));
         overlay.setPreferredSize(new Dimension(0, 0));
 
-        Layer thumbLayer = new Layer();
-        thumbLayer.setEnabled(false); // display-only thumbs; mouse-transparent like the connections
-        thumbLayer.setMinimumSize(new Dimension(0, 0));
-        thumbLayer.setPreferredSize(new Dimension(0, 0));
+        scrollThumbs = new ScrollThumbOverlay(canvas, palette::textForeground);
 
         rootPane = new LayeredPane();
         rootPane.add(columnsLayer, "columns");
         rootPane.add(connectionLayer, "connections");
-        rootPane.add(thumbLayer, "scrollThumbs");
+        rootPane.add(scrollThumbs.layer(), "scrollThumbs");
         rootPane.add(overlay, "overlay");
-
-        scrollThumbs = new ScrollThumbOverlay(canvas, thumbLayer, palette::textForeground);
         // Vertical thumbs are per-column (each pane scrolls its own contents);
         // the single horizontal thumb rides the outer canvas viewport, which is
         // what scrolls the whole diagram sideways.
@@ -173,7 +171,6 @@ public class DiagramController {
         scrollThumbs.track(heap.pane().getViewport(), true);
         scrollThumbs.track(canvas.getViewport(), false);
 
-        hover = new HoverController(this);
         applyChrome();
     }
 
@@ -199,9 +196,9 @@ public class DiagramController {
     public void clear() {
         snapshot = null;
         diff = null;
-        hover.reset();
+        resetHover();
         discardFigures();
-        stack.column().header().setText("Stack");
+        stack.setHeaderText("Stack");
         canvas.redraw();
     }
 
@@ -258,14 +255,12 @@ public class DiagramController {
         expansion.clearCaps(CAP_KEY_HEAP);
     }
 
-    public void clearFieldCapOverrides() {
-        // Every box's field/element/char rows share the "obj:<token>" cap key now
-        // (the heap is uniform boxes), so both the field and array-element menu
-        // items clear the same overrides.
-        expansion.clearCaps("obj:");
-    }
-
-    public void clearArrayElementCapOverrides() {
+    /**
+     * Every box's field/element/char rows share the "obj:&lt;token&gt;" cap key
+     * (the heap is uniform boxes), so the field and array-element menu items
+     * both clear the same overrides.
+     */
+    public void clearObjectCapOverrides() {
         expansion.clearCaps("obj:");
     }
 
@@ -310,7 +305,7 @@ public class DiagramController {
     // ---------------------------------------------------------------- rebuild
 
     private void rebuild() {
-        hover.reset();
+        resetHover();
         Point stackScroll = stack.saveScroll();
         Point heapScroll = heap.saveScroll();
         int canvasScrollX = canvas.getViewport().getViewLocation().x;
@@ -322,7 +317,7 @@ public class DiagramController {
             if (snapshot == null) {
                 return;
             }
-            stack.column().header().setText("Stack — " + threadNameOf(snapshot));
+            stack.setHeaderText("Stack — " + threadNameOf(snapshot));
             List<PendingRef> refs = new ArrayList<>();
             buildHeap(refs); // first: object figures must exist before arrows and stack tooltips
             buildStack(refs);
@@ -350,6 +345,7 @@ public class DiagramController {
         scrollThumbs.reset(); // stale thumb geometry / timers must not outlive the figures
         stack.discard();
         heap.discard();
+        heapBody = null;
         connectionLayer.removeAll();
         objectFigures.clear();
         connectionsBySourceRow.clear();
@@ -382,24 +378,19 @@ public class DiagramController {
             if (expanded) {
                 populateFrame(figure, frame, refs);
             }
-            stack.contents().add(figure);
+            stack.addContent(figure);
         }
     }
 
     private void populateFrame(ContainerFigure figure, DisplayableFrame frame, List<PendingRef> refs) {
-        String frameToken = frame.id();
         if (frame.note() != null) {
             // Native/obsolete/unreadable frame: a note string stands in for variable rows.
             figure.addRow(infoRow(frame.note()));
             return;
         }
-        List<DisplayableVariable> variables = frame.variables(); // this first, then locals
-        List<String> rowKeys = MemoryDiff.rowKeys(variables); // same keying as the differ
-        renderCapped("frame:" + frameToken, variables.size(), config.maxLocalsPerFrameRendered, i -> {
-            DisplayableVariable variable = variables.get(i);
-            ChangeStatus status = palette.effective(diff.statusOf(frameToken, rowKeys.get(i)));
-            return newRow(variable, status, refs, true);
-        }, figure::addRow);
+        // frame.variables() is this first, then locals.
+        addVariableRows(figure, frame.id(), frame.variables(), "frame:" + frame.id(),
+                config.maxLocalsPerFrameRendered, true, refs);
     }
 
     // ------------------------------------------------------------------- heap
@@ -426,11 +417,11 @@ public class DiagramController {
 
         // One vertical column of boxes; ~16 px between OBJECTS (rows inside a box
         // stack with zero spacing — they read as contiguous memory cells).
-        Figure heapBody = new Figure();
+        Figure body = new Figure();
         ToolbarLayout bodyLayout = new ToolbarLayout(false);
         bodyLayout.setSpacing(16);
         bodyLayout.setStretchMinorAxis(false); // boxes take natural width <= 320
-        heapBody.setLayoutManager(bodyLayout);
+        body.setLayoutManager(bodyLayout);
 
         for (String token : order) {
             if (!rendered.contains(token)) {
@@ -440,12 +431,13 @@ public class DiagramController {
             if (struct == null) {
                 continue;
             }
-            heapBody.add(buildObjectFigure(struct, refs));
+            body.add(buildObjectFigure(struct, refs));
         }
         if (omitted > 0) {
-            heapBody.add(unrenderedBox(omitted));
+            body.add(unrenderedBox(omitted));
         }
-        heap.contents().add(heapBody);
+        heapBody = body;
+        heap.addContent(body);
     }
 
     /** A box is hidden only when it is a statics class and the statics toggle is off. */
@@ -482,16 +474,26 @@ public class DiagramController {
             return;
         }
         String token = struct.id();
-        List<DisplayableVariable> fields = struct.variables();
-        List<String> rowKeys = MemoryDiff.rowKeys(fields); // same keying as the differ
-        renderCapped("obj:" + token, fields.size(), fieldCapFor(token), i -> {
-            DisplayableVariable field = fields.get(i);
-            ChangeStatus status = palette.effective(diff.statusOf(token, rowKeys.get(i)));
-            return newRow(field, status, refs, false);
-        }, figure::addRow);
+        addVariableRows(figure, token, struct.variables(), "obj:" + token, fieldCapFor(token), false, refs);
         if (struct.omitted() > 0) {
             figure.addRow(infoRow("(+" + struct.omitted() + " not captured)"));
         }
+    }
+
+    /**
+     * The shared row-building recipe for frames and heap boxes: diff-colored
+     * variable rows ({@code containerId} keys the diff address, with the same
+     * row keying as the differ), capped with a "+N more…" expander under
+     * {@code capKey}.
+     */
+    private void addVariableRows(ContainerFigure figure, String containerId, List<DisplayableVariable> variables,
+            String capKey, int defaultCap, boolean fromStack, List<PendingRef> refs) {
+        List<String> rowKeys = MemoryDiff.rowKeys(variables);
+        renderCapped(capKey, variables.size(), defaultCap, i -> {
+            DisplayableVariable variable = variables.get(i);
+            ChangeStatus status = palette.effective(diff.statusOf(containerId, rowKeys.get(i)));
+            return newRow(variable, status, refs, fromStack);
+        }, figure::addRow);
     }
 
     /**
@@ -544,7 +546,7 @@ public class DiagramController {
         // no arrow), mirroring the old enum-constant/boxed row.
         if (variable.type() == null) {
             VariableRowFigure row = new VariableRowFigure(null, variable.label(), null, status, config);
-            hover.hookRow(row);
+            hookRow(row);
             return row;
         }
 
@@ -556,7 +558,7 @@ public class DiagramController {
             String targetToken = target.get().id();
             VariableRowFigure row = new VariableRowFigure(variable.label(), "", targetToken, status,
                     config);
-            hover.hookRow(row); // reference rows add click/preview/target outline
+            hookRow(row); // reference rows add click/preview/target outline
             refs.add(new PendingRef(row, targetToken, status, fromStack));
             return row;
         }
@@ -564,7 +566,7 @@ public class DiagramController {
         // Box value ("null" included): the text fills the cell, no arrow.
         VariableRowFigure row = new VariableRowFigure(variable.label(), boxTextOf(value), null, status,
                 config);
-        hover.hookRow(row); // every row hover-tints
+        hookRow(row); // every row hover-tints
         row.setToolTip(tooltipLabel(typedTooltip(variable.type(), Ellipsis.fullValueText(value))));
         return row;
     }
@@ -576,7 +578,7 @@ public class DiagramController {
      */
     private VariableRowFigure danglingRow(DisplayableVariable variable, ChangeStatus status) {
         VariableRowFigure row = new VariableRowFigure(variable.label(), "⇥⌀", null, status, config);
-        hover.hookRow(row);
+        hookRow(row);
         row.setToolTip(tooltipLabel(typedTooltip(variable.type(), "dangling reference (no target)")));
         return row;
     }
@@ -638,50 +640,116 @@ public class DiagramController {
             }
             // Round-robin lanes for cross-pane edges, assigned in build order (bottom
             // of stack first), so parallel curves spread across the gutter.
-            int lane = ref.fromStack() ? laneCounter++ % MemoryConnectionRouter.LANES : 0;
+            int lane = ref.fromStack() ? laneCounter++ % StateConnection.Router.LANES : 0;
             StateConnection connection = new StateConnection(ref.status(), lane, config);
-            connection.setSourceAnchor(new RowEdgeAnchor(ref.row().valueBox(), Rectangle::getCenter));
-            // Cross-pane arrows land on the row's LEFT edge (facing the gutter);
-            // same-viewport ones (heap sources) land on its RIGHT edge, matching
-            // the router's right-side arcs.
-            connection.setTargetAnchor(ref.fromStack()
-                    ? new RowEdgeAnchor(target.getReferenceTargetFigure(), Rectangle::getLeft)
-                    : new RowEdgeAnchor(target.getReferenceTargetFigure(), Rectangle::getRight));
+            connection.setSourceAnchor(ref.row().sourceAnchor());
+            // Cross-pane arrows land on the target row's LEFT edge (facing the
+            // gutter); same-viewport ones (heap sources) land on its RIGHT edge,
+            // matching the router's right-side arcs.
+            connection.setTargetAnchor(target.targetAnchor(ref.fromStack()));
             connectionsBySourceRow.put(ref.row(), connection);
             connectionLayer.add(connection);
         }
     }
 
-    // ---------------------------------------------------- hover/reveal support
+    // ------------------------------------------------------------ hover/reveal
 
-    PluginConfig config() {
-        return config;
-    }
+    // Single-slot hover state for variable rows: every row (primitive, null,
+    // unreadable) gets the blue row tint; reference rows additionally get
+    // connection thicken/recolor + target box outline + lazy preview tooltip,
+    // and click reveals the target in the heap pane. Draw2d guarantees
+    // mouseExited(old) before mouseEntered(new), so one slot suffices.
+    // resetHover() runs before every rebuild; stale exits are ignored by
+    // identity check.
+    private VariableRowFigure hoveredRow;
+    private StateConnection hoveredConnection;
+    private HeapObjectFigure hoveredTarget;
 
-    StateConnection connectionFor(VariableRowFigure row) {
-        return connectionsBySourceRow.get(row);
-    }
-
-    HeapObjectFigure objectFigureFor(String token) {
-        return objectFigures.get(token);
-    }
-
-    /** Re-adds the connection so it paints on top of its siblings while hovered. */
-    void raiseConnection(StateConnection connection) {
-        connectionLayer.add(connection);
-    }
-
-    /** Lazy tooltip body for a reference row; null when the target struct is unknown. */
-    IFigure buildPreview(VariableRowFigure row) {
-        if (row.targetToken() == null) {
-            return null;
+    // One shared listener pair for every row; the row is the event source.
+    private final MouseMotionListener rowHoverListener = new MouseMotionListener.Stub() {
+        @Override
+        public void mouseEntered(MouseEvent me) {
+            if (me.getSource() instanceof VariableRowFigure row) {
+                hoverEnter(row);
+            }
         }
-        DisplayableStruct struct = byId.get(row.targetToken());
-        return struct == null ? null : new ObjectPreviewFigure(struct, config);
+
+        @Override
+        public void mouseExited(MouseEvent me) {
+            if (me.getSource() instanceof VariableRowFigure row && hoveredRow == row) {
+                resetHover(); // a mismatch is a stale exit after a rebuild
+            }
+        }
+    };
+
+    private final MouseListener rowClickListener = new MouseListener.Stub() {
+        @Override
+        public void mousePressed(MouseEvent me) {
+            if (me.button == 1 && me.getSource() instanceof VariableRowFigure row) {
+                me.consume();
+                revealTarget(row);
+            }
+        }
+    };
+
+    /**
+     * Registers hover behavior on any variable row; reference rows
+     * (targetToken != null) additionally get click-to-reveal and the hand cursor.
+     */
+    private void hookRow(VariableRowFigure row) {
+        row.addMouseMotionListener(rowHoverListener);
+        if (row.targetToken() != null) {
+            row.addMouseListener(rowClickListener);
+            row.setCursor(Cursors.HAND);
+        }
+    }
+
+    private void hoverEnter(VariableRowFigure row) {
+        if (hoveredRow == row) {
+            return;
+        }
+        resetHover();
+        hoveredRow = row;
+        row.setHoverHighlight(true, config);
+
+        hoveredConnection = connectionsBySourceRow.get(row);
+        if (hoveredConnection != null) {
+            hoveredConnection.setHover(true, config);
+            connectionLayer.add(hoveredConnection); // re-add: paint over sibling arrows
+        }
+        if (row.targetToken() != null) {
+            hoveredTarget = objectFigures.get(row.targetToken());
+            if (hoveredTarget != null) {
+                hoveredTarget.setHoverHighlight(true);
+            }
+        }
+        if (row.getToolTip() == null) {
+            // Lazy preview tooltip, built once from the cached snapshot heap.
+            DisplayableStruct struct = byId.get(row.targetToken());
+            if (struct != null) {
+                row.setToolTip(new ObjectPreviewFigure(struct, config)); // ToolTipHelper shows it in place
+            }
+        }
+    }
+
+    /** Clears the hover slot and restores visuals; safe on figures about to be discarded. */
+    private void resetHover() {
+        if (hoveredRow != null) {
+            hoveredRow.setHoverHighlight(false, config);
+        }
+        if (hoveredConnection != null) {
+            hoveredConnection.setHover(false, config);
+        }
+        if (hoveredTarget != null) {
+            hoveredTarget.setHoverHighlight(false);
+        }
+        hoveredRow = null;
+        hoveredConnection = null;
+        hoveredTarget = null;
     }
 
     /** Click-to-reveal: scroll the heap pane to the target and flash its outline. */
-    void revealTarget(VariableRowFigure row) {
+    private void revealTarget(VariableRowFigure row) {
         if (row.targetToken() == null) {
             return;
         }
@@ -700,7 +768,7 @@ public class DiagramController {
                 return;
             }
             // Only un-flash if this figure is still current and not hover-held.
-            if (objectFigures.get(token) == target && !hover.isCurrentTarget(target)) {
+            if (objectFigures.get(token) == target && hoveredTarget != target) {
                 target.setHoverHighlight(false);
             }
         });
@@ -717,10 +785,10 @@ public class DiagramController {
     }
 
     private Rectangle gutterAbsolute() {
-        Rectangle stackBounds = stack.column().getBounds().getCopy();
-        Rectangle heapBounds = heap.column().getBounds().getCopy();
-        stack.column().translateToAbsolute(stackBounds);
-        heap.column().translateToAbsolute(heapBounds); // sibling of stack column: same coordinate space
+        Rectangle stackBounds = stack.getBounds().getCopy();
+        Rectangle heapBounds = heap.getBounds().getCopy();
+        stack.translateToAbsolute(stackBounds);
+        heap.translateToAbsolute(heapBounds); // sibling of stack column: same coordinate space
         return new Rectangle(stackBounds.right(), stackBounds.y,
                 Math.max(0, heapBounds.x - stackBounds.right()), stackBounds.height);
     }
@@ -729,18 +797,19 @@ public class DiagramController {
      * Rightmost heap box edge (absolute) intersecting the [topY, bottomY] band —
      * the intra-heap arcs' bow baseline. Boxes align left but their right edges
      * are ragged, so an arc must clear every box it passes, not just its
-     * endpoints'. The heap contents hold the heap body, whose children are the
-     * boxes (statics boxes at the top, then objects).
+     * endpoints'. The heapBody's children are the boxes (statics boxes at the
+     * top, then objects).
      */
     private int heapArcBaseline(int topY, int bottomY) {
         int right = Integer.MIN_VALUE;
-        for (IFigure child : heap.contents().getChildren()) {
-            for (IFigure box : child.getChildren()) {
-                Rectangle bounds = box.getBounds().getCopy();
-                box.translateToAbsolute(bounds);
-                if (bounds.bottom() >= topY && bounds.y <= bottomY) {
-                    right = Math.max(right, bounds.right());
-                }
+        if (heapBody == null) {
+            return right;
+        }
+        for (IFigure box : heapBody.getChildren()) {
+            Rectangle bounds = box.getBounds().getCopy();
+            box.translateToAbsolute(bounds);
+            if (bounds.bottom() >= topY && bounds.y <= bottomY) {
+                right = Math.max(right, bounds.right());
             }
         }
         return right;
@@ -782,8 +851,8 @@ public class DiagramController {
             if (lineColor == null) {
                 return;
             }
-            Rectangle stackBounds = stack.column().getBounds();
-            Rectangle heapBounds = heap.column().getBounds();
+            Rectangle stackBounds = stack.getBounds();
+            Rectangle heapBounds = heap.getBounds();
             int centerX = (stackBounds.right() + heapBounds.x) / 2;
             graphics.setBackgroundColor(lineColor);
             graphics.fillRectangle(centerX - DIVIDER_WIDTH / 2, stackBounds.y, DIVIDER_WIDTH, stackBounds.height);

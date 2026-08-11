@@ -1,13 +1,18 @@
 package com.github.ethangodden.diaram.render.figures;
 
+import org.eclipse.draw2d.AbstractBorder;
 import org.eclipse.draw2d.AbstractLayout;
 import org.eclipse.draw2d.CompoundBorder;
+import org.eclipse.draw2d.ConnectionAnchor;
 import org.eclipse.draw2d.Figure;
+import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
+import org.eclipse.draw2d.LineBorder;
 import org.eclipse.draw2d.MarginBorder;
 import org.eclipse.draw2d.PositionConstants;
 import org.eclipse.draw2d.geometry.Dimension;
+import org.eclipse.draw2d.geometry.Insets;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.graphics.Color;
@@ -19,7 +24,7 @@ import com.github.ethangodden.diaram.render.PluginConfig;
 
 /**
  * One row = one variable / field / static field / array element, drawn as
- * "identifier : [box]" — the {@link ValueBoxFigure} is the literal memory
+ * "identifier : [box]" — the {@link ValueBox} is the literal memory
  * cell (no type text; types live in the heap box headers). The box is pinned
  * to the row's right edge (no right inset, so it touches the container's
  * inner border) at its natural width and the identifier hugs its box (label
@@ -46,7 +51,7 @@ public class VariableRowFigure extends Figure {
 
     private final @Nullable String targetToken; // null for primitives / null refs / dangling / unreadables
     private final @Nullable Label nameLabel; // null for box-only rows
-    private final ValueBoxFigure valueBox;
+    private final ValueBox valueBox;
     private final @Nullable Color baseBackground; // null when the row has no tint
 
     public VariableRowFigure(@Nullable String name, @Nullable String boxText, @Nullable String targetToken,
@@ -66,7 +71,7 @@ public class VariableRowFigure extends Figure {
         } else {
             nameLabel = null;
         }
-        valueBox = new ValueBoxFigure(boxText, status, config);
+        valueBox = new ValueBox(boxText, status, config);
         add(valueBox);
         baseBackground = palette.rowTint(status);
         if (baseBackground != null) {
@@ -80,9 +85,9 @@ public class VariableRowFigure extends Figure {
         return targetToken;
     }
 
-    /** The value cell; connection tails anchor to its center. */
-    public ValueBoxFigure valueBox() {
-        return valueBox;
+    /** Anchor for this reference row's outgoing arrow: the tail dot sits at the value cell's center. */
+    public ConnectionAnchor sourceAnchor() {
+        return new RowEdgeAnchor(valueBox, Rectangle::getCenter);
     }
 
     public void setHoverHighlight(boolean hover, PluginConfig config) {
@@ -96,8 +101,63 @@ public class VariableRowFigure extends Figure {
     }
 
     /**
+     * The literal value cell of the row: a 1 px palette-border box holding the
+     * (pre-ellipsized) box-value text ("null" for the debuggee's null, "?" for
+     * unreadables) and nothing for references — a reference's connection tail
+     * starts inside this box.
+     * Transparent so the row's status tint / hover highlight shows through.
+     *
+     * The {@link #MIN_WIDTH} floor is applied by {@link RowLayout}, NOT by
+     * overriding getPreferredSize() here: Label centers its text by offsetting
+     * with (size - preferredSize), so a floored preferred size would zero that
+     * offset and pin short text hard-left in a 40 px cell.
+     */
+    private static final class ValueBox extends Label {
+
+        static final int MIN_WIDTH = 40;
+
+        ValueBox(@Nullable String text, ChangeStatus status, PluginConfig config) {
+            super(text == null ? "" : text);
+            ColorPalette palette = config.palette();
+            FontKit fonts = config.fonts();
+            setLabelAlignment(PositionConstants.CENTER);
+            setFont(fonts.name());
+            setForegroundColor(palette.statusForeground(status));
+            setBorder(new CompoundBorder(new LineBorder(palette.boxBorder(), 1), new MarginBorder(1, 4, 1, 4)));
+        }
+    }
+
+    /** A 3 px vertical accent stripe at the row's left edge; a null color paints nothing. */
+    private static final class StatusStripeBorder extends AbstractBorder {
+
+        private static final Insets INSETS = new Insets(0, 7, 0, 0);
+        private static final int STRIPE_WIDTH = 3;
+
+        private final @Nullable Color color;
+
+        StatusStripeBorder(@Nullable Color color) {
+            this.color = color;
+        }
+
+        @Override
+        public Insets getInsets(IFigure figure) {
+            return INSETS;
+        }
+
+        @Override
+        public void paint(IFigure figure, Graphics graphics, Insets insets) {
+            if (color == null) {
+                return;
+            }
+            Rectangle area = getPaintRectangle(figure, insets);
+            graphics.setBackgroundColor(color);
+            graphics.fillRectangle(area.x, area.y, STRIPE_WIDTH, area.height);
+        }
+    }
+
+    /**
      * Pins the value box to the right edge at its natural width (floored at
-     * {@link ValueBoxFigure#MIN_WIDTH}) and snugs the label against it, its
+     * {@link ValueBox#MIN_WIDTH}) and snugs the label against it, its
      * right edge GAP px left of the box border — leftover width lands at the
      * row's left; preferred width stays label+box natural widths. Unlike a
      * stock BorderLayout, a box wider than the client area (a MAX_WIDTH-clamped
@@ -135,10 +195,10 @@ public class VariableRowFigure extends Figure {
             return size;
         }
 
-        /** Natural box width with the memory-cell floor (see ValueBoxFigure doc). */
+        /** Natural box width with the memory-cell floor (see ValueBox doc). */
         private Dimension boxPreferred() {
             Dimension size = valueBox.getPreferredSize().getCopy();
-            size.width = Math.max(size.width, ValueBoxFigure.MIN_WIDTH);
+            size.width = Math.max(size.width, ValueBox.MIN_WIDTH);
             return size;
         }
 

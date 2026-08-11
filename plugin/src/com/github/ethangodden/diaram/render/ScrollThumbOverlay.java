@@ -8,8 +8,10 @@ import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.FigureCanvas;
 import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
+import org.eclipse.draw2d.Layer;
 import org.eclipse.draw2d.RangeModel;
 import org.eclipse.draw2d.Viewport;
+import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.swt.graphics.Color;
 
@@ -37,14 +39,24 @@ final class ScrollThumbOverlay {
     private static final int FADE_STEP_ALPHA = 24;
 
     private final FigureCanvas canvas;
-    private final IFigure layer;
+    private final Layer layer;
     private final Supplier<Color> color; // palette color, re-read each paint (theme switches)
     private final List<Thumb> thumbs = new ArrayList<>();
 
-    ScrollThumbOverlay(FigureCanvas canvas, IFigure layer, Supplier<Color> color) {
+    ScrollThumbOverlay(FigureCanvas canvas, Supplier<Color> color) {
         this.canvas = canvas;
-        this.layer = layer;
         this.color = color;
+        layer = new Layer();
+        layer.setEnabled(false); // display-only thumbs; mouse-transparent like the connections
+        // Without this, the layer's current bounds would become the root pane's
+        // minimum size and the diagram could never shrink.
+        layer.setMinimumSize(new Dimension(0, 0));
+        layer.setPreferredSize(new Dimension(0, 0));
+    }
+
+    /** The mouse-transparent layer the thumbs paint on; the controller stacks it into the root pane. */
+    IFigure layer() {
+        return layer;
     }
 
     /** Registers an axis: adds its thumb figure and re-shows on every RangeModel value change. */

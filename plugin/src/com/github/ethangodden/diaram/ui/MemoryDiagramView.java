@@ -364,13 +364,13 @@ public class MemoryDiagramView extends ViewPart implements ISnapshotConsumer {
 
     private void applyFieldCap(int value) {
         config.maxFieldsPerObjectRendered = value;
-        controller.clearFieldCapOverrides();
+        controller.clearObjectCapOverrides();
         controller.refresh();
     }
 
     private void applyArrayElementCap(int value) {
         config.maxArrayElementsRendered = value;
-        controller.clearArrayElementCapOverrides();
+        controller.clearObjectCapOverrides();
         controller.refresh();
     }
 }

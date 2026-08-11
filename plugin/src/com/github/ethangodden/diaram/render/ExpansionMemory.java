@@ -15,7 +15,6 @@ public final class ExpansionMemory {
 
     private final Set<String> collapsedFrames = new HashSet<>();
     private final Set<String> collapsedObjects = new HashSet<>();
-    private final Set<String> collapsedStaticClasses = new HashSet<>();
     private final Map<String, Integer> capOverrides = new HashMap<>();
 
     public boolean isFrameCollapsed(String frameKey) {
@@ -34,19 +33,10 @@ public final class ExpansionMemory {
         toggle(collapsedObjects, token, collapsed);
     }
 
-    public boolean isStaticClassCollapsed(String className) {
-        return collapsedStaticClasses.contains(className);
-    }
-
-    public void setStaticClassCollapsed(String className, boolean collapsed) {
-        toggle(collapsedStaticClasses, className, collapsed);
-    }
-
     /** Back to the expanded-everywhere default. */
     public void expandAll() {
         collapsedFrames.clear();
         collapsedObjects.clear();
-        collapsedStaticClasses.clear();
     }
 
     /** Render cap for one owner ("frame:key", "obj:id", "arr:id", "statics:class", "heap"). */

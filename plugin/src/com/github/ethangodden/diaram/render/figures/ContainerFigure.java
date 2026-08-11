@@ -5,11 +5,16 @@ import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.LineBorder;
+import org.eclipse.draw2d.MarginBorder;
+import org.eclipse.draw2d.MouseEvent;
+import org.eclipse.draw2d.MouseListener;
+import org.eclipse.draw2d.PositionConstants;
 import org.eclipse.draw2d.ToolbarLayout;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.swt.graphics.Color;
 
 import com.github.ethangodden.diaram.render.ColorPalette;
+import com.github.ethangodden.diaram.render.FontKit;
 import com.github.ethangodden.diaram.render.PluginConfig;
 
 /**
@@ -40,7 +45,7 @@ public class ContainerFigure extends Figure {
         setBackgroundColor(config.palette().boxBackground());
         setBorder(borderFor(config, false));
 
-        header = BoxFigures.collapsibleHeader(title, expanded, config);
+        header = collapsibleHeader(title, expanded, config);
         add(header);
 
         body = new Figure();
@@ -51,7 +56,7 @@ public class ContainerFigure extends Figure {
             add(body);
         }
 
-        BoxFigures.attachToggle(header, onToggle);
+        attachToggle(header, onToggle);
     }
 
     public void addRow(IFigure row) {
@@ -67,5 +72,35 @@ public class ContainerFigure extends Figure {
         ColorPalette palette = config.palette();
         Color color = hover ? palette.hoverAccent() : palette.boxBorder();
         return new LineBorder(color, 1);
+    }
+
+    /** The "▾/▸ title" header label with the collapsible-box chrome: opaque header band, LEFT alignment. */
+    private static Label collapsibleHeader(String title, boolean expanded, PluginConfig config) {
+        ColorPalette palette = config.palette();
+        FontKit fonts = config.fonts();
+        Label header = new Label((expanded ? "▾ " : "▸ ") + title);
+        header.setLabelAlignment(PositionConstants.LEFT);
+        header.setFont(fonts.header());
+        header.setOpaque(true);
+        header.setBackgroundColor(palette.headerBackground());
+        header.setForegroundColor(palette.textForeground());
+        header.setBorder(new MarginBorder(3, 6, 3, 6));
+        return header;
+    }
+
+    /** Wires single left-click on {@code header} to run {@code onToggle}; a null toggle is a no-op. */
+    private static void attachToggle(Label header, @Nullable Runnable onToggle) {
+        if (onToggle == null) {
+            return;
+        }
+        header.addMouseListener(new MouseListener.Stub() {
+            @Override
+            public void mousePressed(MouseEvent me) {
+                if (me.button == 1) {
+                    me.consume();
+                    onToggle.run();
+                }
+            }
+        });
     }
 }
