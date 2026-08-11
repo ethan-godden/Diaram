@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: Eclipseview
+Bundle-Name: Diaram
 Bundle-SymbolicName: diaram;singleton:=true
 Bundle-Version: 1.1.0.qualifier
 Bundle-Activator: com.github.ethangodden.diaram.Activator

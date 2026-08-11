@@ -4,7 +4,7 @@
 
    <extension point="org.eclipse.ui.views">
       <view
-            id="eclipseview.memoryDiagramView"
+            id="diaram.memoryDiagramView"
             name="Memory Diagram"
             category="org.eclipse.debug.ui"
             class="com.github.ethangodden.diaram.ui.MemoryDiagramView"
@@ -16,7 +16,7 @@
    <extension point="org.eclipse.ui.perspectiveExtensions">
       <perspectiveExtension targetID="org.eclipse.debug.ui.DebugPerspective">
          <view
-               id="eclipseview.memoryDiagramView"
+               id="diaram.memoryDiagramView"
                relative="org.eclipse.debug.ui.VariableView"
                relationship="stack"
                visible="false">
@@ -26,7 +26,7 @@
 
    <extension point="org.eclipse.ui.preferencePages">
       <page
-            id="eclipseview.preferencePage"
+            id="diaram.preferencePage"
             name="Memory Diagram"
             class="com.github.ethangodden.diaram.ui.MemoryDiagramPreferencePage">
       </page>

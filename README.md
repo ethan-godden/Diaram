@@ -1,6 +1,6 @@
-# diaram
+# Diaram
 
-[![Build](https://github.com/ethan-godden/DebugMemoryView/actions/workflows/build.yml/badge.svg)](https://github.com/ethan-godden/DebugMemoryView/actions/workflows/build.yml)
+[![Build](https://github.com/ethan-godden/Diaram/actions/workflows/build.yml/badge.svg)](https://github.com/ethan-godden/Diaram/actions/workflows/build.yml)
 ![Eclipse 2026-06](https://img.shields.io/badge/Eclipse-2026--06%20(4.40)-2C2255)
 ![Java 21](https://img.shields.io/badge/Java-21-orange)
 [![License: EPL 2.0](https://img.shields.io/badge/License-EPL_2.0-blue.svg)](https://www.eclipse.org/legal/epl-2.0/)
@@ -73,7 +73,7 @@ are handed to the view on the UI thread, gated so a superseded snapshot is never
 ## Install (from a release)
 
 1. Download the update-site archive **`diaram-<version>-updatesite.zip`** from the
-   [Releases page](https://github.com/ethan-godden/DebugMemoryView/releases).
+   [Releases page](https://github.com/ethan-godden/Diaram/releases).
 2. In Eclipse: **Help ▸ Install New Software… ▸ Add… ▸ Archive…** and select the downloaded zip.
 3. Expand the **diaram** category, check the feature, click **Next**, accept, then
    **Finish**. Restart Eclipse when prompted.

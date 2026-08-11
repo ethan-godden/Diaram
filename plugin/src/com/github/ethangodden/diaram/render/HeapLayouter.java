@@ -16,7 +16,7 @@ import com.github.ethangodden.diaram.model.MemorySnapshot.DisplayableStruct;
  * keeping previously seen structs in their remembered positions (sticky orderKey)
  * — existing ids never move, new ids append, evicted ids drop.
  *
- * PURE: imports from eclipseview.model and the JDK only (headless-testable).
+ * PURE: imports from diaram.model and the JDK only (headless-testable).
  */
 public final class HeapLayouter {
 
