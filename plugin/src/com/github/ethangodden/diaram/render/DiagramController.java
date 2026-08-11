@@ -23,8 +23,10 @@ import org.eclipse.draw2d.LayeredPane;
 import org.eclipse.draw2d.MouseEvent;
 import org.eclipse.draw2d.MouseListener;
 import org.eclipse.draw2d.MouseMotionListener;
+import org.eclipse.draw2d.SWTEventDispatcher;
 import org.eclipse.draw2d.ScrollPane;
 import org.eclipse.draw2d.TextUtilities;
+import org.eclipse.draw2d.ToolTipHelper;
 import org.eclipse.draw2d.ToolbarLayout;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
@@ -125,6 +127,19 @@ public class DiagramController {
         canvas.setScrollBarVisibility(FigureCanvas.NEVER);
         canvas.getViewport().setContentsTracksWidth(true);
         canvas.getViewport().setContentsTracksHeight(true);
+
+        // Draw2d's stock ToolTipHelper force-hides a visible tooltip 5 s after it
+        // appears, even with the pointer still on the row — far too short to read
+        // a hover preview. Stretch the delay to effectively-never; the tip still
+        // hides normally the moment the pointer leaves the row.
+        canvas.getLightweightSystem().setEventDispatcher(new SWTEventDispatcher() {
+            @Override
+            protected ToolTipHelper createToolTipHelper() {
+                ToolTipHelper helper = super.createToolTipHelper();
+                helper.setHideDelay(Integer.MAX_VALUE);
+                return helper;
+            }
+        });
 
         stack = new DiagramColumn("Stack", 8, 8, config);
 
