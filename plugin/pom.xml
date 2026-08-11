@@ -5,14 +5,14 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.github.ethangodden.debugmemoryview</groupId>
-    <artifactId>debugmemoryview-parent</artifactId>
+    <groupId>com.github.ethangodden.diaram</groupId>
+    <artifactId>diaram-parent</artifactId>
     <version>1.1.0-SNAPSHOT</version>
     <relativePath>../parent/pom.xml</relativePath>
   </parent>
 
   <!-- artifactId MUST equal the Bundle-SymbolicName (manifest-first). Version is
        taken from META-INF/MANIFEST.MF (1.0.0.qualifier -> 1.0.0-SNAPSHOT). -->
-  <artifactId>DebugMemoryView</artifactId>
+  <artifactId>diaram</artifactId>
   <packaging>eclipse-plugin</packaging>
 </project>

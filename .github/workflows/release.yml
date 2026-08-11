@@ -33,7 +33,7 @@ jobs:
 
       # Attach the p2 site zip DIRECTLY to the Release (no upload-artifact wrapper),
       # renamed to the exact file recipients feed to Eclipse. Version comes from the
-      # tag: v1.0.0 -> DebugMemoryView-1.0.0-updatesite.zip.
+      # tag: v1.0.0 -> diaram-1.0.0-updatesite.zip.
       - name: Publish GitHub Release with the update-site zip
         env:
           GH_TOKEN: ${{ github.token }}
@@ -41,11 +41,11 @@ jobs:
           set -euo pipefail
           version="${GITHUB_REF_NAME#v}"
           src=$(ls repository/target/repository-*.zip | head -n1)
-          asset="DebugMemoryView-${version}-updatesite.zip"
+          asset="diaram-${version}-updatesite.zip"
           cp "$src" "$asset"
           # Re-publish cleanly if this tag was released before (idempotent re-cut).
           # Removes the Release but leaves the git tag (managed here) intact.
           gh release delete "$GITHUB_REF_NAME" --yes 2>/dev/null || true
           gh release create "$GITHUB_REF_NAME" "$asset" \
-            --title "DebugMemoryView $GITHUB_REF_NAME" \
+            --title "diaram $GITHUB_REF_NAME" \
             --generate-notes

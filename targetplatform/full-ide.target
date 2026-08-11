@@ -24,7 +24,7 @@
 
   First resolve downloads the SDK (a few hundred MB) into the shared p2 bundle pool.
 -->
-<target name="DebugMemoryView - full IDE (launch only)" sequenceNumber="1">
+<target name="diaram - full IDE (launch only)" sequenceNumber="1">
   <locations>
     <!-- The whole Eclipse SDK product: Platform + JDT + PDE, with the IDE application,
          themes, intro/welcome, help, and the platform-specific launcher fragments.

@@ -1,9 +1,9 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Eclipseview
-Bundle-SymbolicName: DebugMemoryView;singleton:=true
+Bundle-SymbolicName: diaram;singleton:=true
 Bundle-Version: 1.1.0.qualifier
-Bundle-Activator: com.github.ethangodden.debugmemoryview.Activator
+Bundle-Activator: com.github.ethangodden.diaram.Activator
 Require-Bundle: org.eclipse.ui,
  org.eclipse.core.runtime;bundle-version="3.29.0",
  org.eclipse.debug.core;bundle-version="3.23.0",

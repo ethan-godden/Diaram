@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature id="com.github.ethangodden.debugmemoryview.feature" version="0.0.0">
-      <category name="DebugMemoryView"/>
+   <feature id="com.github.ethangodden.diaram.feature" version="0.0.0">
+      <category name="diaram"/>
    </feature>
-   <category-def name="DebugMemoryView" label="Debug Memory View"/>
+   <category-def name="diaram" label="diaram"/>
 </site>

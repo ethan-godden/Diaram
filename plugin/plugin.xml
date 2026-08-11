@@ -7,7 +7,7 @@
             id="eclipseview.memoryDiagramView"
             name="Memory Diagram"
             category="org.eclipse.debug.ui"
-            class="com.github.ethangodden.debugmemoryview.ui.MemoryDiagramView"
+            class="com.github.ethangodden.diaram.ui.MemoryDiagramView"
             icon="icons/memory_view.png"
             restorable="true">
       </view>
@@ -28,12 +28,12 @@
       <page
             id="eclipseview.preferencePage"
             name="Memory Diagram"
-            class="com.github.ethangodden.debugmemoryview.ui.MemoryDiagramPreferencePage">
+            class="com.github.ethangodden.diaram.ui.MemoryDiagramPreferencePage">
       </page>
    </extension>
 
    <extension point="org.eclipse.core.runtime.preferences">
-      <initializer class="com.github.ethangodden.debugmemoryview.ui.PreferenceInitializer"/>
+      <initializer class="com.github.ethangodden.diaram.ui.PreferenceInitializer"/>
    </extension>
 
 </plugin>

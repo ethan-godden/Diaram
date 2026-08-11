@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="com.github.ethangodden.debugmemoryview.feature"
-      label="Debug Memory View"
+      id="com.github.ethangodden.diaram.feature"
+      label="diaram"
       version="1.1.0.qualifier"
       provider-name="Ethan Godden">
 
@@ -22,7 +22,7 @@
    </license>
 
    <plugin
-         id="DebugMemoryView"
+         id="diaram"
          download-size="0"
          install-size="0"
          version="0.0.0"

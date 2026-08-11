@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.github.ethangodden.debugmemoryview</groupId>
-  <artifactId>debugmemoryview-parent</artifactId>
+  <groupId>com.github.ethangodden.diaram</groupId>
+  <artifactId>diaram-parent</artifactId>
   <version>1.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
-  <name>DebugMemoryView (parent)</name>
-  <description>Aggregator + Tycho build for the DebugMemoryView Eclipse plug-in.</description>
+  <name>diaram (parent)</name>
+  <description>Aggregator + Tycho build for the diaram Eclipse plug-in.</description>
 
   <properties>
     <tycho.version>5.0.3</tycho.version>
@@ -44,7 +44,7 @@
         <configuration>
           <target>
             <artifact>
-              <groupId>com.github.ethangodden.debugmemoryview</groupId>
+              <groupId>com.github.ethangodden.diaram</groupId>
               <artifactId>targetplatform</artifactId>
               <version>1.1.0-SNAPSHOT</version>
             </artifact>

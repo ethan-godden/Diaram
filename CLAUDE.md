@@ -12,8 +12,8 @@ snapshots of the same thread and highlights each **variable** as NEW / UPDATED /
 UNCHANGED; variables are the only diffed thing (no frame/struct statuses, and
 removals are not tracked).
 
-- `plugin/` — the plug-in (JavaSE-21, singleton bundle `DebugMemoryView`,
-  root package `com.github.ethangodden.debugmemoryview`). Built manifest-first by
+- `plugin/` — the plug-in (JavaSE-21, singleton bundle `diaram`,
+  root package `com.github.ethangodden.diaram`). Built manifest-first by
   Tycho against the Eclipse 4.40 / 2026-06 target platform.
 - `tests/` — an `eclipse-test-plugin` **fragment** of the plug-in with JUnit 5
   suites (`DiffEngineTest`, `HeapLayouterTest`, `MemorySnapshotBuilderTest`,
@@ -71,7 +71,7 @@ site (`repository/target/repository-<version>.zip`) as the `update-site-zip` art
 zip is how the plug-in ships: install it into an existing Eclipse via Help > Install New
 Software > Add > Archive.
 
-In the IDE: run the `DebugMemoryView` plug-in project as an Eclipse Application
+In the IDE: run the `diaram` plug-in project as an Eclipse Application
 with `runtime-EclipseApplication/` as the runtime workspace, debug a small Java program there, and open the
 "Memory Diagram" view (Debug category).
 
@@ -89,7 +89,7 @@ MemoryDiagramView ← DiagramController ← MemoryDiff ← DiffEngine ←──�
       (ViewPart)      (Draw2d figures)     (per-thread baseline diff)
 ```
 
-Packages below sit under the root `com.github.ethangodden.debugmemoryview`.
+Packages below sit under the root `com.github.ethangodden.diaram`.
 
 - `model` — a single immutable, JDK-only file, `MemorySnapshot.java`: the platform-agnostic
   neutral model plus its own `Builder` (sole ingestion point, and the only minter of

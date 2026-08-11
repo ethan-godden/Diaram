@@ -1,4 +1,4 @@
-# Debug Memory View
+# diaram
 
 [![Build](https://github.com/ethan-godden/DebugMemoryView/actions/workflows/build.yml/badge.svg)](https://github.com/ethan-godden/DebugMemoryView/actions/workflows/build.yml)
 ![Eclipse 2026-06](https://img.shields.io/badge/Eclipse-2026--06%20(4.40)-2C2255)
@@ -12,7 +12,7 @@ snapshots of the same thread and highlights each variable as **NEW / UPDATED** (
 stay uncoloured); variables are the only diffed thing, and removals are not tracked.
 
 The plug-in contributes a view named **Memory Diagram** (in the **Debug** category). The bundle is
-`DebugMemoryView`; the installable feature is labelled *Debug Memory View*.
+`diaram`; the installable feature is labelled *diaram*.
 
 <p align="center">
   <img src="docs/screenshot.png" width="520" alt="The Memory Diagram view rendering a suspended Java session: stack frame, heap objects, arrays, strings, boxed values, and statics with change highlighting and reference arrows">
@@ -72,10 +72,10 @@ are handed to the view on the UI thread, gated so a superseded snapshot is never
 
 ## Install (from a release)
 
-1. Download the update-site archive **`DebugMemoryView-<version>-updatesite.zip`** from the
+1. Download the update-site archive **`diaram-<version>-updatesite.zip`** from the
    [Releases page](https://github.com/ethan-godden/DebugMemoryView/releases).
 2. In Eclipse: **Help ▸ Install New Software… ▸ Add… ▸ Archive…** and select the downloaded zip.
-3. Expand the **Debug Memory View** category, check the feature, click **Next**, accept, then
+3. Expand the **diaram** category, check the feature, click **Next**, accept, then
    **Finish**. Restart Eclipse when prompted.
 4. Open the view (see [Usage](#usage)).
 
@@ -118,7 +118,7 @@ pull request and uploads the update-site zip as a build artifact.
 
 1. Open the repository root as your Eclipse workspace; each module (plus `parent/`) imports as its
    own project.
-2. Run the checked-in launch config **`plugin/DebugMemoryView.launch`** (*Run As ▸ Eclipse
+2. Run the checked-in launch config **`plugin/diaram.launch`** (*Run As ▸ Eclipse
    Application*). It starts a runtime Eclipse using a `runtime-EclipseApplication/` workspace —
    created in the repo root on first launch and gitignored. (The launch targets the EPP *RCP and RAP
    Developers* product; adjust the launch's product if your host Eclipse doesn't provide it.)
@@ -133,7 +133,7 @@ pull request and uploads the update-site zip as a build artifact.
 
 | Path | What it is |
 |------|------------|
-| `plugin/` | The plug-in (bundle `DebugMemoryView`, package `com.github.ethangodden.debugmemoryview`). |
+| `plugin/` | The plug-in (bundle `diaram`, package `com.github.ethangodden.diaram`). |
 | `tests/` | JUnit 5 test fragment of the plug-in (headless; reaches the plug-in's internal packages). |
 | `feature/` | The installable Eclipse feature. |
 | `repository/` | The p2 update site (`category.xml`); produces the shipped zip. |

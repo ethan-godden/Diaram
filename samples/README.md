@@ -12,12 +12,12 @@ Eclipse does not auto-import projects into a runtime (Eclipse Application)
 workspace, so import this project **once**. Because the launch config uses
 `clearws=false`, the import persists across every later launch.
 
-1. Run the `DebugMemoryView` plug-in as an **Eclipse Application** (the
-   `DebugMemoryView.launch` in `plugin/`, runtime workspace
+1. Run the `diaram` plug-in as an **Eclipse Application** (the
+   `diaram.launch` in `plugin/`, runtime workspace
    `runtime-EclipseApplication/`).
 2. In the launched instance: **File > Import… > General > Existing Projects into
    Workspace > Next**.
-3. Set the root directory to this `samples/` folder (…/DebugMemoryView/samples).
+3. Set the root directory to this `samples/` folder (…/diaram/samples).
 4. Leave **"Copy projects into workspace" unchecked** so the source stays here in
    the repo (the runtime workspace just references it in place).
 5. **Finish.** `MemoryDiagramSamples` now appears in the Package Explorer and
